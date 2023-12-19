@@ -1,11 +1,11 @@
 '''
- *小猪惠选
- *本脚本需要python3.10版本，
+ *小猪惠选 安卓app
+ *本脚本需要python3.10版本，下载地址http://zhuadd.tuesjf.cn?share_code=ON13LD
  *抓token就行了
  *ck变量名：xzhx_token，多号&隔开
  *自定义延迟变量：xzyc，单位为s，默认10s
  *默认不开启并发，开启并发在环境变量设置 BF,并将值设置为 True
- *定时2小时一次
+ *定时2小时一次0 0-23/2 * * *
 '''
 
 import sys
