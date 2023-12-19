@@ -51,8 +51,8 @@ wechatBussinessKey = os.getenv("wechatBussinessKey") or ""
 accounts = os.getenv("ydtoken")
 theadNumber = 1  # 并发线程数(建议单线程，多线程容易黑微信号)
 # 等待检测文章的延时区间，默认等待 15 - 20s 的随机时间，请在该时间内完成点击阅读 检测文章
-delayMiniTime = 15
-delayMaxTime = 20
+delayMiniTime = 30
+delayMaxTime = 55
 # 限制只有自己的下级方可自动阅读过检测
 onlyChildrenAutoRead = False
 # 限制自动检测的账号起始坐标（在这个之前的账号不检测是否为下级），注意：在 conc 和 desi 的情况下会异常，请改为 0
