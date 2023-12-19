@@ -4,7 +4,8 @@
 # -------------------------------
 # cron "30 5 * * *" script-path=xxx.py,tag=匹配cron用
 # const $ = new Env('阿里云盘签到');
-
+# cron: 25 2,21 * * *
+# new Env('126-阿里云盘签到');
 import json
 import  requests
 import  os
@@ -12,7 +13,6 @@ import  os
 ##变量export ali_refresh_token=''
 ali_refresh_token=os.getenv("ali_refresh_token").split('&')
 #refresh_token是一成不变的呢，我们使用它来更新签到需要的access_token
-#refresh_token获取教程：https://github.com/bighammer-link/Common-scripts/wiki/%E9%98%BF%E9%87%8C%E4%BA%91%E7%9B%98refresh_token%E8%8E%B7%E5%8F%96%E6%96%B9%E6%B3%95
 # ali_refresh_token = os.getenv("ali_refresh_token")
 # 推送加
 plustoken = os.getenv("plustoken")
@@ -32,19 +32,10 @@ for i in range(len(ali_refresh_token)):
     def daily_check(access_token):
         url = 'https://member.aliyundrive.com/v1/activity/sign_in_list'
         headers = {
-            'Authorization': access_token,
-            'Content-Type': 'application/json'
+            'Authorization': access_token
         }
         response = requests.post(url=url, headers=headers, json={}).text
         result = json.loads(response)
-        sign_days = result['result']['signInCount']
-        data ={
-            'signInDay':sign_days
-        }
-        url_reward ='https://member.aliyundrive.com/v1/activity/sign_in_reward'
-        resp2 =  requests.post(url=url_reward, headers=headers, data=json.dumps(data))
-        result2=json.loads(resp2.text)
-        # print(result2)
         if 'success' in result:
             print('签到成功')
             for i, j in enumerate(result['result']['signInLogs']):
