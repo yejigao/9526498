@@ -1,6 +1,6 @@
 /**
  * E览衢江v1.01
- * 执行时间： 25 10,16 * * *  E览衢江.js
+ * 执行时间： 25 6,22 * * *  E览衢江.js
  * const $ = new Env("E览衢江");
  * 注册地址：https://app.tmuyun.com/webChannels/invite?inviteCode=WEHXAH&tenantId=85&accountId=64b4ea00a7fd39546390310d
  * 
