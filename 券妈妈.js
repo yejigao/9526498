@@ -6,7 +6,7 @@
  抓包：首页左上角 http://app.quanmama.com/ajax/app/UserActionMonitorAjax.ashx 里面的usertoken
  变量：qmm='usertoken@usertoken '  多个账号用 @ 或者 换行 分割
  定时每小时一次,默认不推送信息
-
+执行时间: 0 0-23/1 * * * 券妈妈.js
 */
 
 //cron: 0 */1 * * *
