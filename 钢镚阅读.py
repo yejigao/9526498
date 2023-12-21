@@ -7,7 +7,8 @@
 
 Update by Huansheng
 
-入口 微信打开：httphttp://2540314.x.m212.hcwveuevwcrtx.cloud/?p=2540314
+入口 微信打开：http://2621738.wburj4uaa9ned.gbl.wk47j64rz9hp.cloud/?p=2568134
+网页在线取CK：http://ck-tools.freemyip.com/
 
 变量名称：ydtoken     变量值：cookie@key
 多账号用'===='隔开 例 账号1====账号2
@@ -50,8 +51,8 @@ wechatBussinessKey = os.getenv("wechatBussinessKey") or ""
 accounts = os.getenv("ydtoken")
 theadNumber = 1  # 并发线程数(建议单线程，多线程容易黑微信号)
 # 等待检测文章的延时区间，默认等待 15 - 20s 的随机时间，请在该时间内完成点击阅读 检测文章
-delayMiniTime = 30
-delayMaxTime = 55
+delayMiniTime = 15
+delayMaxTime = 20
 # 限制只有自己的下级方可自动阅读过检测
 onlyChildrenAutoRead = False
 # 限制自动检测的账号起始坐标（在这个之前的账号不检测是否为下级），注意：在 conc 和 desi 的情况下会异常，请改为 0
