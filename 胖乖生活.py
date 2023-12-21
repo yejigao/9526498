@@ -1,7 +1,7 @@
 """
 没毛，没毛，买毛，一分钱也没有
-抓包userapi.qiekj.com域名里的Authorization
-变量名pgsh，格式 cookie，多账号用@
+抓包userapi.qiekj.com域名里的token
+变量名pgsh=token，多账号用@
 """
 import  requests
 import  json
