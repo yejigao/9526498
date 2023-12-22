@@ -7,9 +7,8 @@
 
 Update by Huansheng
 
-入口 微信打开：http://2621738.wburj4uaa9ned.gbl.wk47j64rz9hp.cloud/?p=2568134
-网页在线取CK：http://ck-tools.freemyip.com/
-
+入口 微信打开：
+http://2540314.x.m212.hcwveuevwcrtx.cloud/?p=2540314
 变量名称：ydtoken     变量值：cookie@key
 多账号用'===='隔开 例 账号1====账号2
 
