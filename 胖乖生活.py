@@ -2,7 +2,7 @@
 没毛，没毛，买毛，一分钱也没有
 抓包userapi.qiekj.com域名里的token
 变量名pgsh=token，多账号用@
-执行时间: 0 6-17/1 * * * 胖乖生活.py
+执行时间: 0 6 * * * 胖乖生活.py
 """
 import  requests
 import  json
