@@ -1,5 +1,5 @@
 /**
- * cron 47 18 * * *  欧拉ORA.js
+ * cron 47 6 * * *  欧拉ORA.js
  * 变量名:oraCookie
  * 变量值:https://ora-api.gwm.com.cn/api-u/v1/user/sign/sureNew Headers中的authorzation & ssoid & timestamp & sign
  * scriptVersionNow = "0.0.1";
