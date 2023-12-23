@@ -1,6 +1,6 @@
 /**
  * new Env("掌上天津极速版")
- * cron 5 15 * * *  zstjjsb.js
+ * cron 5 15 * * * 掌上天津极速版.js
  * Show:
  * 变量名:zstjjsb_data
  * 变量值:http://bbs.zaitianjin.net/zstj/v2.8/index.php 请求body(txt)中   => userId的值&salf的值
