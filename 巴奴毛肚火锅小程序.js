@@ -1,6 +1,6 @@
 /**
  * new Env("巴奴毛肚火锅小程序")
- * cron 57 21 * * *  bnmdhg_wx.js
+ * cron 57 21 * * * 巴奴毛肚火锅小程序.js
  * Show:每天积分
  * 变量名:bnmdhg
  * 变量值:https://cloud.banu.cn/api/域名下member_id 多账号 @ 或换行分割
