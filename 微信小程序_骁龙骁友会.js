@@ -1,6 +1,6 @@
 /**
  * new Env("微信小程序_骁龙骁友会")
- * cron 5 15 * * *  wx_xlxyh.js
+ * cron 5 15 * * *  微信小程序_骁龙骁友会.js
  * Show:微信小程序_骁龙骁友会 每天签到 点赞文章 其他未写
  * 变量名:wx_xlxyh_data
  * 变量值:https://qualcomm.growthideadata.com/qualcomm-app/    headers请求头中 sessionkey的值和userid的值 用&拼接
