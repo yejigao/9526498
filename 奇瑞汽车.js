@@ -1,6 +1,6 @@
 /**
  * new Env("奇瑞汽车")
- * cron 09 18 * * *  test_v2.js
+ * cron 09 18 * * * 奇瑞汽车.js
  * Show:多账号分隔符@    多变量分隔符&
  * 变量名:chery_data
  * 变量值:mobile-consumer-sapp.chery.cn请求头Authorization 去掉bearer 
