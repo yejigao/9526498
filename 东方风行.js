@@ -1,5 +1,5 @@
 /**
- * cron 45 19 * * *  dffx.js
+ * cron 45 6 * * * 东方风行.js
  * Show:东方风行 APP
  * @author https://github.com/smallfawn/QLScriptPublic
  * 变量名:dffxCookie
