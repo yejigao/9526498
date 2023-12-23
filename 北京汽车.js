@@ -1,5 +1,5 @@
 /**
- * cron 45 21 * * *  bjev.js
+ * cron 45 22 * * * 北京汽车.js
  * Show:北京汽车 点赞每天5次 10分 签到10分 转发2次 20分  7天签到100分 30天1000分 半年5000 1年1W  
  * 合计1月2300分  商城最低价4900分 平均2个月换一次
  * @author https://github.com/smallfawn/QLScriptPublic
