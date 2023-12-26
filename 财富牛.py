@@ -1,5 +1,5 @@
 '''
-注册链接http://cfnadd.tuesjf.cn?share_code=QD9SV0
+注册链接http://cfnadd.tuesjf.cn?share_code=3D8I5C
 抓token不拉人一天一毛变量名字cfn
 '''
 import requests
