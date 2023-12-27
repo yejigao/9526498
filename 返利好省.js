@@ -20,7 +20,7 @@ export flhsCookie='抓取的Cookie1@抓取的Cookie2'
 圈X配置如下，其他自行测试
 一小时运行一次即可
 [task_local]
-#执行时间: 0 8-23 * * * 返利好省.js https://raw.githubusercontent.com/YaphetS0903/JStest/main/flhs.js, tag=返利好省, enabled=true
+#执行时间: 5 8-15 * * * 返利好省.js https://raw.githubusercontent.com/YaphetS0903/JStest/main/flhs.js, tag=返利好省, enabled=true
 [rewrite_local]
 #返利好省
 https://api.uutequan.com/v1/welfare/page url script-request-header https://raw.githubusercontent.com/YaphetS0903/JStest/main/flhs.js
