@@ -8,7 +8,7 @@
 多账号@隔开
 比如 export xjhd='eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.XXXXXX'@'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.XXXXXX'
 */
-//定时 0 */2 * * * 吧
+//定时 0 */2 * * * 习酒.js
 const $ = new Env('习酒');
 var request = require("request");
 let status;
