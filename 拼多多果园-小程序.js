@@ -1,7 +1,7 @@
 /*
 [task_local]
 # 拼多多果园-小程序
-15 8 * * * pddFruit.js, tag=拼多多果园-小程序, enabled=true
+15 8,12,18 * * * 拼多多果园-小程序.js, tag=拼多多果园-小程序, enabled=true
 搜mobile.yangkeduo.com，请求头的AccessToken，设置PDD_TOKENS 多账号@分割 
 */
 const $ = new Env('拼多多果园-小程序');
