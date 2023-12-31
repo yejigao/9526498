@@ -1,7 +1,7 @@
 /**
  * cron 5 15 * * *  莱充充电.js
  * Show:微信小程序-莱充充电
- * 变量名:
+ * 变量名:wx_lccd
  * 变量值:https://shop.laichon.com/api/v1/ headers下的authorization 去掉JWT 只要后面的  # openid 多账户换行或者&
  * 示例 ejxxxxxx#o0sa51....
  * scriptVersionNow = "0.0.1";
