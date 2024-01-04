@@ -2,7 +2,7 @@
  * 熊猫赚 V1.30
  * const $ = new Env("熊猫赚");
  * cron 38 7-21/2 * * *	熊猫赚.js
- * 走下我的注册地址，谢谢，有本请投稿（利润项目偷撸可dd）：http://spread.mdwl2023.love/panda.html?Promocode=1549081
+ * 走下我的注册地址，谢谢，有本请投稿（利润项目偷撸可dd）：http://spread.mdwl2023.love/panda.html?Promocode=1587022
  * 更新：修复无法登录的问题
  * ========= 青龙--配置文件 ===========
  * # 项目名称
