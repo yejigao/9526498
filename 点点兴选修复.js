@@ -1,6 +1,7 @@
 /*
 活动地址: 微信小程序搜索点点兴选
 抓包方法: 抓new.nainiupt.com域名里的userid
+变量：ddxx=userid的值
 一天一次即可  
 修复签到 增加龙卡兑换
 */
