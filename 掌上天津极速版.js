@@ -1,243 +1,702 @@
 /**
- * new Env("掌上天津极速版")
- * cron 5 15 * * * 掌上天津极速版.js
- * Show:
- * 变量名:zstjjsb_data
- * 变量值:http://bbs.zaitianjin.net/zstj/v2.8/index.php 请求body(txt)中   => userId的值&salf的值
- * scriptVersionNow = "0.0.1";
+ * 更新说明：
+ * 调整日志输入格式，增加查询接口和提现接口
+ * ======================================
+ * 掌上天津极速版 v1.00
+ * const $ = new Env("掌上天津极速版");
+ * 
+ * cron 10 10 * * * 掌上天津极速版.js
+ * 
+ * ========= 青龙--配置文件 ===========
+ * # 项目名称
+ * export zstjhd='userId&salf'
+
+ * 多账号 换行 或 @ 隔开
+
+ * 奖励：自动签到领现金，自动提现到微信
+ * 
+ * ====================================
+ * 原作者By：福利社
+ * 更新By：Huansheng1
+ * 
+ * tg反馈群： https://t.me/huan_sheng
+ * 
+ * 脚本更新地址：https://github.com/Huansheng1/my-qinglong-js 
+ *   
  */
+const $ = new Env('掌上天津极速版');
+const axios = require('axios');
+const CryptoJS = require('crypto-js');
+const {
+    log
+} = console;
+const Notify = 1; //0为关闭通知，1为打开通知,默认为1
+const debug = 0; //0为关闭调试，1为打开调试,默认为0
 
-const $ = new Env("掌上天津极速版");
-const ckName = "zstjjsb_data";
-const Notify = 1; //0为关闭通知,1为打开通知,默认为1
-let envSplitor = ["@", "\n"]; //多账号分隔符
-let strSplitor = '&'; //多变量分隔符
-const CryptoJS = require("crypto-js")
-let scriptVersionNow = "0.0.1";
+let zstjhd = ($.isNode() ? process.env.zstjhd : $.getdata("zstjhd")) || ""
+let zstjhdArr = [];
+let data = '';
+let msg = '';
 
-
-let msg = "";
-
-
-async function start() {
-    await getVersion("smallfawn/QLScriptPublic@main/zstjjsb.js");
-    await getNotice();
-
-    let taskall = [];
-    for (let user of $.userList) {
-        if (user.ckStatus) {
-            taskall.push(await user.task());
-            $.DoubleLog(`等待10s`)
-            await $.wait(10000);
-        }
-    }
-    await Promise.all(taskall);
-}
-
-class UserInfo {
-    constructor(str) {
-        this.index = ++$.userIdx;
-        this.userId = str.split(strSplitor)[0]; //单账号多变量分隔符
-        this.salf = str.split(strSplitor)[1];
-        this.ckStatus = true;
-    }
-    async task() {
-        $.DoubleLog(`------ 第[${this.index}]个账号 ------`)
-        await this.sign_info()
-    }
-    encode(str) {
-        //var b = new Buffer(str);
-        var b = Buffer.from(str);
-        var s = b.toString('base64');
-        var s = s.replace(/\//g, '_')
-        return s
-    }
-    getmac() {
-        var mac = "";
-        for (var i = 0; i < 6; i++) {
-            var randomByte = Math.floor(Math.random() * 256);
-            var hexString = randomByte.toString(16).toUpperCase();
-            mac += (hexString.length === 1 ? "0" + hexString : hexString) + ":";
-        }
-        mac = mac.slice(0, -1); // 去掉最后一个冒号
-        return mac;
-    }
-    async sign_info() {
-        let timestamp = Math.round(new Date().getTime() / 1000).toString();
-        let macs = this.getmac()
-        let mac = encodeURIComponent(macs)
-        let s = 'brand=OPPO&client=android&deviceInfo=OPPO_PCAM00_2021040100_10&interfaceVersion=v2.8&lat=30.1&lng=114.2&mac=' + macs + '&model=PCAM00&privacyStatus=1&region=天津市&salf=' + this.salf + '&timestamp=' + timestamp + '&uid=' + this.userId + '&userId=' + this.userId + '&version=2.8.4&versionCode=154'
-        s = this.encode(s)
-        let signs = CryptoJS.HmacSHA1(s, '1s_vsegymTasdgKxiKvRz5vDlyzmc92A_H6A8zg6I').toString().toUpperCase()
-        try {
-            let options = {
-                method: 'POST',
-                url: 'http://bbs.zaitianjin.net/zstj/v2.8/index.php',
-                headers: {
-                    'Content-Yype': 'application/x-www-form-urlencoded',
-                    'Host': 'bbs.zaitianjin.net',
-                    'Connection': 'Keep-Alive',
-                    'Accept-Encoding': 'gzip',
-                    'User-Agent': 'okhttp/4.9.3'
-                },
-                body: 'c=User&lng=114.2&privacyStatus=1&sign=' + signs + '&interfaceVersion=v2.8&version=2.8.4&userId=' + this.userId + '&m=signInfo&mac=' + mac + '&versionCode=154&deviceInfo=OPPO_PCAM00_2021040100_10&uid=' + this.userId + '&client=android&model=PCAM00&region=%E5%A4%A9%E6%B4%A5%E5%B8%82&salf=' + this.salf + '&brand=OPPO&lat=30.1&timestamp=' + timestamp
-            }, result = await httpRequest(options);
-            //console.log(options);
-            //console.log(result);
-            if (result["code"] == 1) {
-                $.DoubleLog(`账号[${this.index}]  签到天数: ${result["data"]["signDays"]}🎉`);
-                $.DoubleLog(`账号[${this.index}]  累计签到天数: ${result["data"]["signAllDays"]}`)
-                $.DoubleLog(`账号[${this.index}]  今日是否签到: ${result["data"]["signStatue"]}`)
-                $.DoubleLog(`账号[${this.index}]  连续签到7天奖励: ${result["data"]["signData"]}`)
-                if (result["data"]["signStatue"] == false) {
-                    await this.sign()
-                }
-            } else {
-                $.DoubleLog(`账号[${this.index}]  失败 ❌`);
-                //console.log(options);
-                //console.log(result);
-            }
-        } catch (e) {
-            console.log(e);
-        }
-    }
-
-    async sign() {
-        let timestamp = Math.round(new Date().getTime() / 1000).toString();
-        let macs = this.getmac()
-        let mac = encodeURIComponent(macs)
-        let s = 'brand=OPPO&client=android&deviceInfo=OPPO_PCAM00_2021040100_10&interfaceVersion=v2.8&lat=30.1&lng=114.2&mac=' + macs + '&model=PCAM00&privacyStatus=1&region=天津市&salf=' + this.salf + '&timestamp=' + timestamp + '&uid=' + this.userId + '&userId=' + this.userId + '&version=2.8.4&versionCode=154'
-        s = this.encode(s)
-        let signs = CryptoJS.HmacSHA1(s, '1s_vsegymTasdgKxiKvRz5vDlyzmc92A_H6A8zg6I').toString().toUpperCase()
-        try {
-            let options = {
-                method: 'POST',
-                url: 'http://bbs.zaitianjin.net/zstj/v2.8/index.php',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Host': 'bbs.zaitianjin.net',
-                    'Connection': 'Keep-Alive',
-                    'Accept-Encoding': 'gzip',
-                    'User-Agent': 'okhttp/4.9.3'
-                },
-                body: 'c=Credit&lng=114.2&privacyStatus=1&sign=' + signs + '&interfaceVersion=v2.8&version=2.8.4&userId=' + this.userId + '&m=sign&mac=' + mac + '&versionCode=154&deviceInfo=OPPO_PCAM00_2021040100_10&uid=' + this.userId + '&client=android&model=PCAM00&region=%E5%A4%A9%E6%B4%A5%E5%B8%82&salf=' + this.salf + '&brand=OPPO&lat=30.1&timestamp=' + timestamp
-
-            }, result = await httpRequest(options);
-            //console.log(options);
-            //console.log(result);
-            if (result["code"] == 1) {
-                $.DoubleLog(`账号[${this.index}]  签到成功🎉`);
-            } else {
-                $.DoubleLog(`账号[${this.index}]  签到:失败 ❌ `);
-                //console.log(options);
-                //console.log(result);
-            }
-        } catch (e) {
-            console.log(e);
-        }
-    }
-}
-
+var timestamp = Math.round(new Date().getTime() / 1000).toString();
 !(async () => {
-    if (!(await checkEnv())) return;
-    if ($.userList.length > 0) {
-        await start();
-    } await $.SendMsg(msg);
-})().catch((e) => console.log(e)).finally(() => $.done());
-
-//********************************************************
-/**
- * 变量检查与处理
- * @returns
- */
-async function checkEnv() {
-    let userCookie = ($.isNode() ? process.env[ckName] : $.getdata(ckName)) || "";
-    //let userCount = 0;
-    if (userCookie) {
-        // console.log(userCookie);
-        let e = envSplitor[0];
-        for (let o of envSplitor)
-            if (userCookie.indexOf(o) > -1) {
-                e = o;
-                break;
-            }
-        for (let n of userCookie.split(e)) n && $.userList.push(new UserInfo(n));
-        //userCount = $.userList.length;
+    await showAd();
+    if (typeof $request !== "undefined") {
+        await GetRewrite();
     } else {
-        console.log("未找到CK");
-        return;
-    }
-    return console.log(`共找到${$.userList.length}个账号`), true; //true == !0
-}
-
-/////////////////////////////////////////////////////////////////////////////////////
-function httpRequest(options, method = null) {
-    method = options.method ? options.method.toLowerCase() : options.body ? "post" : "get";
-    return new Promise((resolve) => {
-        $[method](options, (err, resp, data) => {
-            if (err) {
-                //console.log(resp)
-                console.log(`${method}请求失败`);
-                $.logErr(err);
-            } else {
-                //console.log(resp)
-                //console.log(data)
-                if (data) {
-                    try { data = JSON.parse(data); } catch (error) { }
-                    resolve(data);
-                } else {
-                    console.log(`请求api返回数据为空，请检查自身原因`);
-                }
+        if (!(await Envs()))
+            return;
+        else {
+            log(`\n=================== 共找到 ${zstjhdArr.length} 个账号 ===================`)
+            if (debug) {
+                log(`【debug】 这是你的全部账号数组:\n ${zstjhdArr}`);
             }
+            for (let index = 0; index < zstjhdArr.length; index++) {
+                let num = index + 1
+                addNotifyStr(`\n----------- 执行 第 [${num}] 个账号 -----------`)
+                zstjhd = zstjhdArr[index];
+                uid = zstjhd.split('&')[0]
+                salf = zstjhd.split('&')[1]
+                await sign()
+                await signinfo()
+                await getInfo()
+            }
+            await SendMsg(msg);
+        }
+    }
+})()
+    .catch((e) => log(e))
+    .finally(() => $.done())
+
+async function showAd () {
+    console.log(`============================== 公告 =========================\n\n定制、偷撸、投稿 联系 QQ：1047827439\ntg反馈群： https://t.me/huan_sheng \n脚本更新地址：https://github.com/Huansheng1/my-qinglong-js\n\n=============================================================`);
+    await $.wait(100);
+}
+async function getInfo () {
+    t = timestamp
+    macs = genmac()
+    mac = encodeURIComponent(macs)
+    s = 'brand=OPPO&client=android&deviceInfo=OPPO_PCAM00_2021040100_10&interfaceVersion=v2.8&lat=30.1&lng=114.2&mac=' + macs + '&model=PCAM00&privacyStatus=1&region=天津市&salf=' + salf + '&timestamp=' + t + '&uid=' + uid + '&userId=' + uid + '&version=2.8.4&versionCode=154'
+    s = encode(s)
+    signs = CryptoJS.HmacSHA1(s, '1s_vsegymTasdgKxiKvRz5vDlyzmc92A_H6A8zg6I').toString().toUpperCase()
+    return new Promise((resolve) => {
+        var options = {
+            method: 'POST',
+            url: 'http://bbs.zaitianjin.net/zstj/v2.8/index.php',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Host': 'bbs.zaitianjin.net',
+                'Connection': 'Keep-Alive',
+                'User-Agent': 'okhttp/4.9.3'
+            },
+            proxy: false,
+            data: 'c=User&lng=114.2&privacyStatus=1&sign=' + signs + '&interfaceVersion=v2.8&version=2.8.4&userId=' + uid + '&m=getInfo&mac=' + mac + '&versionCode=154&deviceInfo=OPPO_PCAM00_2021040100_10&uid=' + uid + '&client=android&model=PCAM00&region=%E5%A4%A9%E6%B4%A5%E5%B8%82&salf=' + salf + '&brand=OPPO&lat=30.1&timestamp=' + t
+        };
+        if (debug) {
+            log(`\n【debug】=============== 这是  请求 url ===============`);
+            log(JSON.stringify(options));
+        }
+        axios.request(options).then(async function (response) {
+            try {
+                data = response.data;
+                if (debug) {
+                    log(`\n\n【debug】===============这是 返回data==============`);
+                    log(JSON.stringify(response.data));
+                }
+                if (data.code == 1) {
+                    addNotifyStr('当前账户余额: ' + data.data.smallChange + '元 累计获得奖励: ' + data.data.profit + '元 账号ID: ' + data.data.uid, true);
+                    addNotifyStr(data.data.openid ? `已绑定微信号，账号昵称: ${data.data.nickname}，可自动提现` : `${data.data.nickname} 未绑定微信，无法自动提现`, true);
+                    if (Number(data.data.smallChange) >= 10) {
+                        await withdrawal();
+                    } else {
+                        addNotifyStr('当前账户余额不足10元，无法提现！', true);
+                    }
+                } else addNotifyStr(data.codemsg, true);
+            } catch (e) {
+                log(`异常：${data}，原因：${data.codemsg}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
             resolve();
         });
-    });
+    })
 }
-/**
- * 获取远程版本
- */
-function getVersion(scriptUrl, timeout = 3 * 1000) {
+async function signinfo () {
+    t = timestamp
+    macs = genmac()
+    mac = encodeURIComponent(macs)
+
+    s = 'brand=OPPO&client=android&deviceInfo=OPPO_PCAM00_2021040100_10&interfaceVersion=v2.8&lat=30.1&lng=114.2&mac=' + macs + '&model=PCAM00&privacyStatus=1&region=天津市&salf=' + salf + '&timestamp=' + t + '&uid=' + uid + '&userId=' + uid + '&version=2.8.4&versionCode=154'
+    s = encode(s)
+
+    signs = CryptoJS.HmacSHA1(s, '1s_vsegymTasdgKxiKvRz5vDlyzmc92A_H6A8zg6I').toString().toUpperCase()
     return new Promise((resolve) => {
-        const options = { url: `https://fastly.jsdelivr.net/gh/${scriptUrl}` };
-        $.get(options, (err, resp, data) => {
-            try {
-                const regex = /scriptVersionNow\s*=\s*(["'`])([\d.]+)\1/;
-                const match = data.match(regex);
-                const scriptVersionLatest = match ? match[2] : "";
-                console.log(`\n====== 当前版本：${scriptVersionNow} 📌 最新版本：${scriptVersionLatest} ======`);
-            } catch (e) {
-                $.logErr(e, resp);
-            }
-            resolve();
-        }, timeout);
-    });
-}
-/**
- * 获取远程通知
- */
-async function getNotice() {
-    try {
-        const urls = [
-            "https://fastly.jsdelivr.net/gh/smallfawn/Note@main/Notice.json",
-            "https://gcore.jsdelivr.net/gh/smallfawn/Note@main/Notice.json",
-            "https://cdn.jsdelivr.net/gh/smallfawn/Note@main/Notice.json",
-            "https://ghproxy.com/https://raw.githubusercontent.com/smallfawn/Note/main/Notice.json",
-            "https://gitee.com/smallfawn/Note/raw/master/Notice.json",
-        ];
-        let notice = null;
-        for (const url of urls) {
-            const options = { url, headers: { "User-Agent": "" }, };
-            const result = await httpRequest(options);
-            if (result && "notice" in result) {
-                notice = result.notice.replace(/\\n/g, "\n");
-                break;
-            }
+        var options = {
+            method: 'POST',
+            url: 'http://bbs.zaitianjin.net/zstj/v2.8/index.php',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Host': 'bbs.zaitianjin.net',
+                'Connection': 'Keep-Alive',
+                'User-Agent': 'okhttp/4.9.3'
+            },
+            proxy: false,
+            data: 'c=User&lng=114.2&privacyStatus=1&sign=' + signs + '&interfaceVersion=v2.8&version=2.8.4&userId=' + uid + '&m=signInfo&mac=' + mac + '&versionCode=154&deviceInfo=OPPO_PCAM00_2021040100_10&uid=' + uid + '&client=android&model=PCAM00&region=%E5%A4%A9%E6%B4%A5%E5%B8%82&salf=' + salf + '&brand=OPPO&lat=30.1&timestamp=' + t
+        };
+        if (debug) {
+            log(`\n【debug】=============== 这是  请求 url ===============`);
+            log(JSON.stringify(options));
         }
-        if (notice) { $.DoubleLog(notice); }
-    } catch (e) {
-        console.log(e);
+        axios.request(options).then(async function (response) {
+            try {
+                data = response.data;
+                if (debug) {
+                    log(`\n\n【debug】===============这是 返回data==============`);
+                    log(JSON.stringify(response.data));
+                }
+                if (data.code == 1) {
+                    addNotifyStr('连续签到天数: ' + data.data.signDays + '天 累计签到天数: ' + data.data.signAllDays + '天 今日' + (data.data.signStatue ? '已' : '未') + '签到', true);
+                    addNotifyStr('连续签到7天的奖励分别是: ' + data.data.signData?.map(item => item + '元')?.join('、'), true);
+                } else addNotifyStr(data.codemsg, true);
+            } catch (e) {
+                log(`异常：${data}，原因：${data.codemsg}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+async function sign () {
+    t = timestamp
+    macs = genmac()
+    mac = encodeURIComponent(macs)
+
+    s = 'brand=OPPO&client=android&deviceInfo=OPPO_PCAM00_2021040100_10&interfaceVersion=v2.8&lat=30.1&lng=114.2&mac=' + macs + '&model=PCAM00&privacyStatus=1&region=天津市&salf=' + salf + '&timestamp=' + t + '&uid=' + uid + '&userId=' + uid + '&version=2.8.4&versionCode=154'
+    s = encode(s)
+
+    signs = CryptoJS.HmacSHA1(s, '1s_vsegymTasdgKxiKvRz5vDlyzmc92A_H6A8zg6I').toString().toUpperCase()
+    return new Promise((resolve) => {
+        var options = {
+            method: 'POST',
+            url: 'http://bbs.zaitianjin.net/zstj/v2.8/index.php',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Host': 'bbs.zaitianjin.net',
+                'Connection': 'Keep-Alive',
+                'User-Agent': 'okhttp/4.9.3'
+            },
+            proxy: false,
+            data: 'c=Credit&lng=114.2&privacyStatus=1&sign=' + signs + '&interfaceVersion=v2.8&version=2.8.4&userId=' + uid + '&m=sign&mac=' + mac + '&versionCode=154&deviceInfo=OPPO_PCAM00_2021040100_10&uid=' + uid + '&client=android&model=PCAM00&region=%E5%A4%A9%E6%B4%A5%E5%B8%82&salf=' + salf + '&brand=OPPO&lat=30.1&timestamp=' + t
+
+        };
+        if (debug) {
+            log(`\n【debug】=============== 这是  请求 url ===============`);
+            log(JSON.stringify(options));
+        }
+        axios.request(options).then(async function (response) {
+            try {
+                data = response.data;
+                if (debug) {
+                    log(`\n\n【debug】===============这是 返回data==============`);
+                    log(JSON.stringify(response.data));
+                }
+                if (data.code == 1) {
+                    addNotifyStr(data.codemsg, true);
+                } else addNotifyStr(data.codemsg, true);
+            } catch (e) {
+                log(`异常：${data}，原因：${data.codemsg}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+async function withdrawal () {
+    t = timestamp
+    macs = genmac()
+    mac = encodeURIComponent(macs)
+
+    s = 'brand=OPPO&client=android&deviceInfo=OPPO_PCAM00_2021040100_10&interfaceVersion=v2.8&lat=30.1&lng=114.2&mac=' + macs + '&model=PCAM00&money=10&privacyStatus=1&region=天津市&salf=' + salf + '&timestamp=' + t + '&uid=' + uid + '&userId=' + uid + '&version=2.8.4&versionCode=154'
+    s = encode(s)
+
+    signs = CryptoJS.HmacSHA1(s, '1s_vsegymTasdgKxiKvRz5vDlyzmc92A_H6A8zg6I').toString().toUpperCase()
+    return new Promise((resolve) => {
+        var options = {
+            method: 'POST',
+            url: 'http://bbs.zaitianjin.net/zstj/v2.8/index.php',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Host': 'bbs.zaitianjin.net',
+                'Connection': 'Keep-Alive',
+                'User-Agent': 'okhttp/4.9.3'
+            },
+            proxy: false,
+            data: 'c=Credit&lng=114.2&privacyStatus=1&sign=' + signs + '&interfaceVersion=v2.8&version=2.8.4&userId=' + uid + '&money=10&m=withdrawal&mac=' + mac + '&versionCode=154&deviceInfo=OPPO_PCAM00_2021040100_10&uid=' + uid + '&client=android&model=PCAM00&region=%E5%A4%A9%E6%B4%A5%E5%B8%82&salf=' + salf + '&brand=OPPO&lat=30.1&timestamp=' + t
+
+        };
+        if (debug) {
+            log(`\n【debug】=============== 这是  请求 url ===============`);
+            log(JSON.stringify(options));
+        }
+        axios.request(options).then(async function (response) {
+            try {
+                data = response.data;
+                if (debug) {
+                    log(`\n\n【debug】===============这是 返回data==============`);
+                    log(JSON.stringify(response.data));
+                }
+                if (data.code == 1) {
+                    addNotifyStr(data.codemsg?.replace('提现', '提现10元'), true);
+                } else addNotifyStr(data.codemsg?.replace('提现', '提现10元'), true);
+            } catch (e) {
+                log(`异常：${data}，原因：${data.codemsg}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+
+async function Envs () {
+    if (zstjhd) {
+        if (zstjhd.indexOf("@") != -1) {
+            zstjhd.split("@").forEach((item) => {
+
+                zstjhdArr.push(item);
+            });
+        } else if (zstjhd.indexOf("\n") != -1) {
+            zstjhd.split("\n").forEach((item) => {
+                zstjhdArr.push(item);
+            });
+        } else {
+            zstjhdArr.push(zstjhd);
+        }
+    } else {
+        log(`\n 【${$.name}】：未填写变量 zstjhd`)
+        return;
+    }
+
+    return true;
+}
+function addNotifyStr (str, is_log = true) {
+    if (is_log) {
+        log(`${str}\n`)
+    }
+    msg += `${str}\n`
+}
+
+
+function encode (str) {
+    //var b = new Buffer(str);
+    var b = Buffer.from(str);
+    var s = b.toString('base64');
+    var s = s.replace(/\//g, '_')
+    return s
+}
+
+
+
+
+function genmac () { var ran1 = ran1 = Math.floor(Math.random() * 256); ran1 = ran1.toString(16).toUpperCase(); if (ran1.length == 1) ran1 = "0" + ran1; var ran2 = Math.floor(Math.random() * 256); ran2 = ran2.toString(16).toUpperCase(); if (ran2.length == 1) ran2 = "0" + ran2; var ran3 = Math.floor(Math.random() * 256); ran3 = ran3.toString(16).toUpperCase(); if (ran3.length == 1) ran3 = "0" + ran3; var ran4 = Math.floor(Math.random() * 256); ran4 = ran4.toString(16).toUpperCase(); if (ran4.length == 1) ran4 = "0" + ran4; var ran5 = Math.floor(Math.random() * 256); ran5 = ran5.toString(16).toUpperCase(); if (ran5.length == 1) ran5 = "0" + ran5; var ran6 = Math.floor(Math.random() * 256); ran6 = ran6.toString(16).toUpperCase(); if (ran6.length == 1) ran6 = "0" + ran6; var res = ""; res = ran1 + ":" + ran2 + ":" + ran3 + ":" + ran4 + ":" + ran5 + ":" + ran6; return res; }
+// ============================================发送消息============================================ \\
+async function SendMsg (message) {
+    if (!message)
+        return;
+
+    if (Notify > 0) {
+        if ($.isNode()) {
+            var notify = require('./sendNotify');
+            await notify.sendNotify($.name, message);
+        } else {
+            $.msg(message);
+        }
+    } else {
+        log(message);
     }
 }
-// ==================== API ==================== //
-function Env(t, e) { class s { constructor(t) { this.env = t } send(t, e = "GET") { t = "string" == typeof t ? { url: t } : t; let s = this.get; return ("POST" === e && (s = this.post), new Promise((e, a) => { s.call(this, t, (t, s, r) => { t ? a(t) : e(s) }) })) } get(t) { return this.send.call(this.env, t) } post(t) { return this.send.call(this.env, t, "POST") } } return new (class { constructor(t, e) { this.userList = []; this.userIdx = 0; (this.name = t), (this.http = new s(this)), (this.data = null), (this.dataFile = "box.dat"), (this.logs = []), (this.isMute = !1), (this.isNeedRewrite = !1), (this.logSeparator = "\n"), (this.encoding = "utf-8"), (this.startTime = new Date().getTime()), Object.assign(this, e), this.log("", `🔔${this.name},开始!`) } getEnv() { return "undefined" != typeof $environment && $environment["surge-version"] ? "Surge" : "undefined" != typeof $environment && $environment["stash-version"] ? "Stash" : "undefined" != typeof module && module.exports ? "Node.js" : "undefined" != typeof $task ? "Quantumult X" : "undefined" != typeof $loon ? "Loon" : "undefined" != typeof $rocket ? "Shadowrocket" : void 0 } isNode() { return "Node.js" === this.getEnv() } isQuanX() { return "Quantumult X" === this.getEnv() } isSurge() { return "Surge" === this.getEnv() } isLoon() { return "Loon" === this.getEnv() } isShadowrocket() { return "Shadowrocket" === this.getEnv() } isStash() { return "Stash" === this.getEnv() } toObj(t, e = null) { try { return JSON.parse(t) } catch { return e } } toStr(t, e = null) { try { return JSON.stringify(t) } catch { return e } } getjson(t, e) { let s = e; const a = this.getdata(t); if (a) try { s = JSON.parse(this.getdata(t)) } catch { } return s } setjson(t, e) { try { return this.setdata(JSON.stringify(t), e) } catch { return !1 } } getScript(t) { return new Promise((e) => { this.get({ url: t }, (t, s, a) => e(a)) }) } runScript(t, e) { return new Promise((s) => { let a = this.getdata("@chavy_boxjs_userCfgs.httpapi"); a = a ? a.replace(/\n/g, "").trim() : a; let r = this.getdata("@chavy_boxjs_userCfgs.httpapi_timeout"); (r = r ? 1 * r : 20), (r = e && e.timeout ? e.timeout : r); const [i, o] = a.split("@"), n = { url: `http://${o}/v1/scripting/evaluate`, body: { script_text: t, mock_type: "cron", timeout: r }, headers: { "X-Key": i, Accept: "*/*" }, timeout: r, }; this.post(n, (t, e, a) => s(a)) }).catch((t) => this.logErr(t)) } loaddata() { if (!this.isNode()) return {}; { (this.fs = this.fs ? this.fs : require("fs")), (this.path = this.path ? this.path : require("path")); const t = this.path.resolve(this.dataFile), e = this.path.resolve(process.cwd(), this.dataFile), s = this.fs.existsSync(t), a = !s && this.fs.existsSync(e); if (!s && !a) return {}; { const a = s ? t : e; try { return JSON.parse(this.fs.readFileSync(a)) } catch (t) { return {} } } } } writedata() { if (this.isNode()) { (this.fs = this.fs ? this.fs : require("fs")), (this.path = this.path ? this.path : require("path")); const t = this.path.resolve(this.dataFile), e = this.path.resolve(process.cwd(), this.dataFile), s = this.fs.existsSync(t), a = !s && this.fs.existsSync(e), r = JSON.stringify(this.data); s ? this.fs.writeFileSync(t, r) : a ? this.fs.writeFileSync(e, r) : this.fs.writeFileSync(t, r) } } lodash_get(t, e, s) { const a = e.replace(/\[(\d+)\]/g, ".$1").split("."); let r = t; for (const t of a) if (((r = Object(r)[t]), void 0 === r)) return s; return r } lodash_set(t, e, s) { return Object(t) !== t ? t : (Array.isArray(e) || (e = e.toString().match(/[^.[\]]+/g) || []), (e.slice(0, -1).reduce((t, s, a) => Object(t[s]) === t[s] ? t[s] : (t[s] = Math.abs(e[a + 1]) >> 0 == +e[a + 1] ? [] : {}), t)[e[e.length - 1]] = s), t) } getdata(t) { let e = this.getval(t); if (/^@/.test(t)) { const [, s, a] = /^@(.*?)\.(.*?)$/.exec(t), r = s ? this.getval(s) : ""; if (r) try { const t = JSON.parse(r); e = t ? this.lodash_get(t, a, "") : e } catch (t) { e = "" } } return e } setdata(t, e) { let s = !1; if (/^@/.test(e)) { const [, a, r] = /^@(.*?)\.(.*?)$/.exec(e), i = this.getval(a), o = a ? ("null" === i ? null : i || "{}") : "{}"; try { const e = JSON.parse(o); this.lodash_set(e, r, t), (s = this.setval(JSON.stringify(e), a)) } catch (e) { const i = {}; this.lodash_set(i, r, t), (s = this.setval(JSON.stringify(i), a)) } } else s = this.setval(t, e); return s } getval(t) { switch (this.getEnv()) { case "Surge": case "Loon": case "Stash": case "Shadowrocket": return $persistentStore.read(t); case "Quantumult X": return $prefs.valueForKey(t); case "Node.js": return (this.data = this.loaddata()), this.data[t]; default: return (this.data && this.data[t]) || null } } setval(t, e) { switch (this.getEnv()) { case "Surge": case "Loon": case "Stash": case "Shadowrocket": return $persistentStore.write(t, e); case "Quantumult X": return $prefs.setValueForKey(t, e); case "Node.js": return ((this.data = this.loaddata()), (this.data[e] = t), this.writedata(), !0); default: return (this.data && this.data[e]) || null } } initGotEnv(t) { (this.got = this.got ? this.got : require("got")), (this.cktough = this.cktough ? this.cktough : require("tough-cookie")), (this.ckjar = this.ckjar ? this.ckjar : new this.cktough.CookieJar()), t && ((t.headers = t.headers ? t.headers : {}), void 0 === t.headers.Cookie && void 0 === t.cookieJar && (t.cookieJar = this.ckjar)) } get(t, e = () => { }) { switch ((t.headers && (delete t.headers["Content-Type"], delete t.headers["Content-Length"], delete t.headers["content-type"], delete t.headers["content-length"]), this.getEnv())) { case "Surge": case "Loon": case "Stash": case "Shadowrocket": default: this.isSurge() && this.isNeedRewrite && ((t.headers = t.headers || {}), Object.assign(t.headers, { "X-Surge-Skip-Scripting": !1 })), $httpClient.get(t, (t, s, a) => { !t && s && ((s.body = a), (s.statusCode = s.status ? s.status : s.statusCode), (s.status = s.statusCode)), e(t, s, a) }); break; case "Quantumult X": this.isNeedRewrite && ((t.opts = t.opts || {}), Object.assign(t.opts, { hints: !1 })), $task.fetch(t).then((t) => { const { statusCode: s, statusCode: a, headers: r, body: i, bodyBytes: o, } = t; e(null, { status: s, statusCode: a, headers: r, body: i, bodyBytes: o, }, i, o) }, (t) => e((t && t.error) || "UndefinedError")); break; case "Node.js": let s = require("iconv-lite"); this.initGotEnv(t), this.got(t).on("redirect", (t, e) => { try { if (t.headers["set-cookie"]) { const s = t.headers["set-cookie"].map(this.cktough.Cookie.parse).toString(); s && this.ckjar.setCookieSync(s, null), (e.cookieJar = this.ckjar) } } catch (t) { this.logErr(t) } }).then((t) => { const { statusCode: a, statusCode: r, headers: i, rawBody: o, } = t, n = s.decode(o, this.encoding); e(null, { status: a, statusCode: r, headers: i, rawBody: o, body: n, }, n) }, (t) => { const { message: a, response: r } = t; e(a, r, r && s.decode(r.rawBody, this.encoding)) }) } } post(t, e = () => { }) { const s = t.method ? t.method.toLocaleLowerCase() : "post"; switch ((t.body && t.headers && !t.headers["Content-Type"] && !t.headers["content-type"] && (t.headers["content-type"] = "application/x-www-form-urlencoded"), t.headers && (delete t.headers["Content-Length"], delete t.headers["content-length"]), this.getEnv())) { case "Surge": case "Loon": case "Stash": case "Shadowrocket": default: this.isSurge() && this.isNeedRewrite && ((t.headers = t.headers || {}), Object.assign(t.headers, { "X-Surge-Skip-Scripting": !1 })), $httpClient[s](t, (t, s, a) => { !t && s && ((s.body = a), (s.statusCode = s.status ? s.status : s.statusCode), (s.status = s.statusCode)), e(t, s, a) }); break; case "Quantumult X": (t.method = s), this.isNeedRewrite && ((t.opts = t.opts || {}), Object.assign(t.opts, { hints: !1 })), $task.fetch(t).then((t) => { const { statusCode: s, statusCode: a, headers: r, body: i, bodyBytes: o, } = t; e(null, { status: s, statusCode: a, headers: r, body: i, bodyBytes: o, }, i, o) }, (t) => e((t && t.error) || "UndefinedError")); break; case "Node.js": let a = require("iconv-lite"); this.initGotEnv(t); const { url: r, ...i } = t; this.got[s](r, i).then((t) => { const { statusCode: s, statusCode: r, headers: i, rawBody: o, } = t, n = a.decode(o, this.encoding); e(null, { status: s, statusCode: r, headers: i, rawBody: o, body: n }, n) }, (t) => { const { message: s, response: r } = t; e(s, r, r && a.decode(r.rawBody, this.encoding)) }) } } time(t, e = null) { const s = e ? new Date(e) : new Date(); let a = { "M+": s.getMonth() + 1, "d+": s.getDate(), "H+": s.getHours(), "m+": s.getMinutes(), "s+": s.getSeconds(), "q+": Math.floor((s.getMonth() + 3) / 3), S: s.getMilliseconds(), }; /(y+)/.test(t) && (t = t.replace(RegExp.$1, (s.getFullYear() + "").substr(4 - RegExp.$1.length))); for (let e in a) new RegExp("(" + e + ")").test(t) && (t = t.replace(RegExp.$1, 1 == RegExp.$1.length ? a[e] : ("00" + a[e]).substr(("" + a[e]).length))); return t } queryStr(t) { let e = ""; for (const s in t) { let a = t[s]; null != a && "" !== a && ("object" == typeof a && (a = JSON.stringify(a)), (e += `${s}=${a}&`)) } return (e = e.substring(0, e.length - 1)), e } msg(e = t, s = "", a = "", r) { const i = (t) => { switch (typeof t) { case void 0: return t; case "string": switch (this.getEnv()) { case "Surge": case "Stash": default: return { url: t }; case "Loon": case "Shadowrocket": return t; case "Quantumult X": return { "open-url": t }; case "Node.js": return }case "object": switch (this.getEnv()) { case "Surge": case "Stash": case "Shadowrocket": default: { let e = t.url || t.openUrl || t["open-url"]; return { url: e } } case "Loon": { let e = t.openUrl || t.url || t["open-url"], s = t.mediaUrl || t["media-url"]; return { openUrl: e, mediaUrl: s } } case "Quantumult X": { let e = t["open-url"] || t.url || t.openUrl, s = t["media-url"] || t.mediaUrl, a = t["update-pasteboard"] || t.updatePasteboard; return { "open-url": e, "media-url": s, "update-pasteboard": a, } } case "Node.js": return }default: return } }; if (!this.isMute) switch (this.getEnv()) { case "Surge": case "Loon": case "Stash": case "Shadowrocket": default: $notification.post(e, s, a, i(r)); break; case "Quantumult X": $notify(e, s, a, i(r)); break; case "Node.js": }if (!this.isMuteLog) { let t = ["", "==============📣系统通知📣==============",]; t.push(e), s && t.push(s), a && t.push(a), console.log(t.join("\n")), (this.logs = this.logs.concat(t)) } } log(...t) { t.length > 0 && (this.logs = [...this.logs, ...t]), console.log(t.join(this.logSeparator)) } logErr(t, e) { switch (this.getEnv()) { case "Surge": case "Loon": case "Stash": case "Shadowrocket": case "Quantumult X": default: this.log("", `❗️${this.name},错误!`, t); break; case "Node.js": this.log("", `❗️${this.name},错误!`, t.stack) } } wait(t) { return new Promise((e) => setTimeout(e, t)) } DoubleLog(d) { if (this.isNode()) { if (d) { console.log(`${d}`); msg += `\n ${d}` } } else { console.log(`${d}`); msg += `\n ${d}` } } async SendMsg(m) { if (!m) return; if (Notify > 0) { if (this.isNode()) { var notify = require("./sendNotify"); await notify.sendNotify(this.name, m) } else { this.msg(this.name, "", m) } } else { console.log(m) } } done(t = {}) { const e = new Date().getTime(), s = (e - this.startTime) / 1e3; switch ((this.log("", `🔔${this.name},结束!🕛${s}秒`), this.log(), this.getEnv())) { case "Surge": case "Loon": case "Stash": case "Shadowrocket": case "Quantumult X": default: $done(t); break; case "Node.js": process.exit(1) } } })(t, e) }
-//Env rewrite:smallfawn Update-time:23-6-30 newAdd:DoubleLog & SendMsg
+
+function Env (t, e) {
+    "undefined" != typeof process && JSON.stringify(process.env).indexOf("GITHUB") > -1 && process.exit(0);
+
+    class s {
+        constructor(t) {
+            this.env = t
+        }
+
+        send (t, e = "GET") {
+            t = "string" == typeof t ? {
+                url: t
+            } : t;
+            let s = this.get;
+            return "POST" === e && (s = this.post), new Promise((e, i) => {
+                s.call(this, t, (t, s, r) => {
+                    t ? i(t) : e(s)
+                })
+            })
+        }
+
+        get (t) {
+            return this.send.call(this.env, t)
+        }
+
+        post (t) {
+            return this.send.call(this.env, t, "POST")
+        }
+    }
+
+    return new class {
+        constructor(t, e) {
+            this.name = t, this.http = new s(this), this.data = null, this.dataFile = "box.dat", this.logs = [], this.isMute = !1, this.isNeedRewrite = !1, this.logSeparator = "\n", this.startTime = (new Date).getTime(), Object.assign(this, e), this.log("", `🔔${this.name}, 开始!`)
+        }
+
+        isNode () {
+            return "undefined" != typeof module && !!module.exports
+        }
+
+        isQuanX () {
+            return "undefined" != typeof $task
+        }
+
+        isSurge () {
+            return "undefined" != typeof $httpClient && "undefined" == typeof $loon
+        }
+
+        isLoon () {
+            return "undefined" != typeof $loon
+        }
+
+        toObj (t, e = null) {
+            try {
+                return JSON.parse(t)
+            } catch {
+                return e
+            }
+        }
+
+        toStr (t, e = null) {
+            try {
+                return JSON.stringify(t)
+            } catch {
+                return e
+            }
+        }
+
+        getjson (t, e) {
+            let s = e;
+            const i = this.getdata(t);
+            if (i) try {
+                s = JSON.parse(this.getdata(t))
+            } catch { }
+            return s
+        }
+
+        setjson (t, e) {
+            try {
+                return this.setdata(JSON.stringify(t), e)
+            } catch {
+                return !1
+            }
+        }
+
+        getScript (t) {
+            return new Promise(e => {
+                this.get({
+                    url: t
+                }, (t, s, i) => e(i))
+            })
+        }
+
+        runScript (t, e) {
+            return new Promise(s => {
+                let i = this.getdata("@chavy_boxjs_userCfgs.httpapi");
+                i = i ? i.replace(/\n/g, "").trim() : i;
+                let r = this.getdata("@chavy_boxjs_userCfgs.httpapi_timeout");
+                r = r ? 1 * r : 20, r = e && e.timeout ? e.timeout : r;
+                const [o, h] = i.split("@"), n = {
+                    url: `http://${h}/v1/scripting/evaluate`,
+                    body: {
+                        script_text: t,
+                        mock_type: "cron",
+                        timeout: r
+                    },
+                    headers: {
+                        "X-Key": o,
+                        Accept: "*/*"
+                    }
+                };
+                this.post(n, (t, e, i) => s(i))
+            }).catch(t => this.logErr(t))
+        }
+
+        loaddata () {
+            if (!this.isNode()) return {}; {
+                this.fs = this.fs ? this.fs : require("fs"), this.path = this.path ? this.path : require("path");
+                const t = this.path.resolve(this.dataFile),
+                    e = this.path.resolve(process.cwd(), this.dataFile),
+                    s = this.fs.existsSync(t),
+                    i = !s && this.fs.existsSync(e);
+                if (!s && !i) return {}; {
+                    const i = s ? t : e;
+                    try {
+                        return JSON.parse(this.fs.readFileSync(i))
+                    } catch (t) {
+                        return {}
+                    }
+                }
+            }
+        }
+
+        writedata () {
+            if (this.isNode()) {
+                this.fs = this.fs ? this.fs : require("fs"), this.path = this.path ? this.path : require("path");
+                const t = this.path.resolve(this.dataFile),
+                    e = this.path.resolve(process.cwd(), this.dataFile),
+                    s = this.fs.existsSync(t),
+                    i = !s && this.fs.existsSync(e),
+                    r = JSON.stringify(this.data);
+                s ? this.fs.writeFileSync(t, r) : i ? this.fs.writeFileSync(e, r) : this.fs.writeFileSync(t, r)
+            }
+        }
+
+        lodash_get (t, e, s) {
+            const i = e.replace(/\[(\d+)\]/g, ".$1").split(".");
+            let r = t;
+            for (const t of i)
+                if (r = Object(r)[t], void 0 === r) return s;
+            return r
+        }
+
+        lodash_set (t, e, s) {
+            return Object(t) !== t ? t : (Array.isArray(e) || (e = e.toString().match(/[^.[\]]+/g) || []), e.slice(0, -1).reduce((t, s, i) => Object(t[s]) === t[s] ? t[s] : t[s] = Math.abs(e[i + 1]) >> 0 == +e[i + 1] ? [] : {}, t)[e[e.length - 1]] = s, t)
+        }
+
+        getdata (t) {
+            let e = this.getval(t);
+            if (/^@/.test(t)) {
+                const [, s, i] = /^@(.*?)\.(.*?)$/.exec(t), r = s ? this.getval(s) : "";
+                if (r) try {
+                    const t = JSON.parse(r);
+                    e = t ? this.lodash_get(t, i, "") : e
+                } catch (t) {
+                    e = ""
+                }
+            }
+            return e
+        }
+
+        setdata (t, e) {
+            let s = !1;
+            if (/^@/.test(e)) {
+                const [, i, r] = /^@(.*?)\.(.*?)$/.exec(e), o = this.getval(i),
+                    h = i ? "null" === o ? null : o || "{}" : "{}";
+                try {
+                    const e = JSON.parse(h);
+                    this.lodash_set(e, r, t), s = this.setval(JSON.stringify(e), i)
+                } catch (e) {
+                    const o = {};
+                    this.lodash_set(o, r, t), s = this.setval(JSON.stringify(o), i)
+                }
+            } else s = this.setval(t, e);
+            return s
+        }
+
+        getval (t) {
+            return this.isSurge() || this.isLoon() ? $persistentStore.read(t) : this.isQuanX() ? $prefs.valueForKey(t) : this.isNode() ? (this.data = this.loaddata(), this.data[t]) : this.data && this.data[t] || null
+        }
+
+        setval (t, e) {
+            return this.isSurge() || this.isLoon() ? $persistentStore.write(t, e) : this.isQuanX() ? $prefs.setValueForKey(t, e) : this.isNode() ? (this.data = this.loaddata(), this.data[e] = t, this.writedata(), !0) : this.data && this.data[e] || null
+        }
+
+        initGotEnv (t) {
+            this.got = this.got ? this.got : require("got"), this.cktough = this.cktough ? this.cktough : require("tough-cookie"), this.ckjar = this.ckjar ? this.ckjar : new this.cktough.CookieJar, t && (t.headers = t.headers ? t.headers : {}, void 0 === t.headers.Cookie && void 0 === t.cookieJar && (t.cookieJar = this.ckjar))
+        }
+
+        get (t, e = (() => { })) {
+            t.headers && (delete t.headers["Content-Type"], delete t.headers["Content-Length"]), this.isSurge() || this.isLoon() ? (this.isSurge() && this.isNeedRewrite && (t.headers = t.headers || {}, Object.assign(t.headers, {
+                "X-Surge-Skip-Scripting": !1
+            })), $httpClient.get(t, (t, s, i) => {
+                !t && s && (s.body = i, s.statusCode = s.status), e(t, s, i)
+            })) : this.isQuanX() ? (this.isNeedRewrite && (t.opts = t.opts || {}, Object.assign(t.opts, {
+                hints: !1
+            })), $task.fetch(t).then(t => {
+                const {
+                    statusCode: s,
+                    statusCode: i,
+                    headers: r,
+                    body: o
+                } = t;
+                e(null, {
+                    status: s,
+                    statusCode: i,
+                    headers: r,
+                    body: o
+                }, o)
+            }, t => e(t))) : this.isNode() && (this.initGotEnv(t), this.got(t).on("redirect", (t, e) => {
+                try {
+                    if (t.headers["set-cookie"]) {
+                        const s = t.headers["set-cookie"].map(this.cktough.Cookie.parse).toString();
+                        s && this.ckjar.setCookieSync(s, null), e.cookieJar = this.ckjar
+                    }
+                } catch (t) {
+                    this.logErr(t)
+                }
+            }).then(t => {
+                const {
+                    statusCode: s,
+                    statusCode: i,
+                    headers: r,
+                    body: o
+                } = t;
+                e(null, {
+                    status: s,
+                    statusCode: i,
+                    headers: r,
+                    body: o
+                }, o)
+            }, t => {
+                const {
+                    message: s,
+                    response: i
+                } = t;
+                e(s, i, i && i.body)
+            }))
+        }
+
+        post (t, e = (() => { })) {
+            if (t.body && t.headers && !t.headers["Content-Type"] && (t.headers["Content-Type"] = "application/x-www-form-urlencoded"), t.headers && delete t.headers["Content-Length"], this.isSurge() || this.isLoon()) this.isSurge() && this.isNeedRewrite && (t.headers = t.headers || {}, Object.assign(t.headers, {
+                "X-Surge-Skip-Scripting": !1
+            })), $httpClient.post(t, (t, s, i) => {
+                !t && s && (s.body = i, s.statusCode = s.status), e(t, s, i)
+            });
+            else if (this.isQuanX()) t.method = "POST", this.isNeedRewrite && (t.opts = t.opts || {}, Object.assign(t.opts, {
+                hints: !1
+            })), $task.fetch(t).then(t => {
+                const {
+                    statusCode: s,
+                    statusCode: i,
+                    headers: r,
+                    body: o
+                } = t;
+                e(null, {
+                    status: s,
+                    statusCode: i,
+                    headers: r,
+                    body: o
+                }, o)
+            }, t => e(t));
+            else if (this.isNode()) {
+                this.initGotEnv(t);
+                const {
+                    url: s,
+                    ...i
+                } = t;
+                this.got.post(s, i).then(t => {
+                    const {
+                        statusCode: s,
+                        statusCode: i,
+                        headers: r,
+                        body: o
+                    } = t;
+                    e(null, {
+                        status: s,
+                        statusCode: i,
+                        headers: r,
+                        body: o
+                    }, o)
+                }, t => {
+                    const {
+                        message: s,
+                        response: i
+                    } = t;
+                    e(s, i, i && i.body)
+                })
+            }
+        }
+
+        time (t, e = null) {
+            const s = e ? new Date(e) : new Date;
+            let i = {
+                "M+": s.getMonth() + 1,
+                "d+": s.getDate(),
+                "H+": s.getHours(),
+                "m+": s.getMinutes(),
+                "s+": s.getSeconds(),
+                "q+": Math.floor((s.getMonth() + 3) / 3),
+                S: s.getMilliseconds()
+            };
+            /(y+)/.test(t) && (t = t.replace(RegExp.$1, (s.getFullYear() + "").substr(4 - RegExp.$1.length)));
+            for (let e in i) new RegExp("(" + e + ")").test(t) && (t = t.replace(RegExp.$1, 1 == RegExp.$1.length ? i[e] : ("00" + i[e]).substr(("" + i[e]).length)));
+            return t
+        }
+
+        msg (e = t, s = "", i = "", r) {
+            const o = t => {
+                if (!t) return t;
+                if ("string" == typeof t) return this.isLoon() ? t : this.isQuanX() ? {
+                    "open-url": t
+                } : this.isSurge() ? {
+                    url: t
+                } : void 0;
+                if ("object" == typeof t) {
+                    if (this.isLoon()) {
+                        let e = t.openUrl || t.url || t["open-url"],
+                            s = t.mediaUrl || t["media-url"];
+                        return {
+                            openUrl: e,
+                            mediaUrl: s
+                        }
+                    }
+                    if (this.isQuanX()) {
+                        let e = t["open-url"] || t.url || t.openUrl,
+                            s = t["media-url"] || t.mediaUrl;
+                        return {
+                            "open-url": e,
+                            "media-url": s
+                        }
+                    }
+                    if (this.isSurge()) {
+                        let e = t.url || t.openUrl || t["open-url"];
+                        return {
+                            url: e
+                        }
+                    }
+                }
+            };
+            if (this.isMute || (this.isSurge() || this.isLoon() ? $notification.post(e, s, i, o(r)) : this.isQuanX() && $notify(e, s, i, o(r))), !this.isMuteLog) {
+                let t = ["", "==============📣系统通知📣=============="];
+                t.push(e), s && t.push(s), i && t.push(i), console.log(t.join("\n")), this.logs = this.logs.concat(t)
+            }
+        }
+
+        log (...t) {
+            t.length > 0 && (this.logs = [...this.logs, ...t]), console.log(t.join(this.logSeparator))
+        }
+
+        logErr (t, e) {
+            const s = !this.isSurge() && !this.isQuanX() && !this.isLoon();
+            s ? this.log("", `❗️${this.name}, 错误!`, t.stack) : this.log("", `❗️${this.name}, 错误!`, t)
+        }
+
+        wait (t) {
+            return new Promise(e => setTimeout(e, t))
+        }
+
+        done (t = {}) {
+            const e = (new Date).getTime(),
+                s = (e - this.startTime) / 1e3;
+            this.log("", `🔔${this.name}, 结束! 🕛 ${s} 秒`), this.log(), (this.isSurge() || this.isQuanX() || this.isLoon()) && $done(t)
+        }
+    }(t, e)
+}
