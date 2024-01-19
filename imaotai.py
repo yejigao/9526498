@@ -17,8 +17,9 @@ import json #line:8
 #原创 微信公众号@爱上羊毛侠 
 
 # 青龙面板加入环境变量MTTokenD
-# MTTokenD是茅台预约参数，多个请换行，格式'省份,城市,经度,维度,设备id,token,MT-Token-Wap(抓包小茅运)'
-
+# MTTokenD是茅台预约参数，多个请换行，格式'省份,城市,经度,维度,MT-Device-ID的值,MT-Token,MT-Token-Wap的值(抓包小茅运)'
+列如 MTTokenD=
+浙江省,温州市,120.xxxxx,28.xxxx,85BF87C7-xxxx-xxxx-xxxx-836239D55467,eyJ0exxxx0R0,eyJxxxx14f1s; YX_SUPPORT_WEBP=1
 p_c_map ={}#line:1
 mt_r ='clips_OlU6TmFRag5rCXwbNAQ/Tz1SKlN8THcecBp/'#line:2
 res_map ={'10941':'贵州茅台酒（甲辰龙年）','10942':'贵州茅台酒（甲辰龙年）x2'}#line:7#,'2478':'贵州茅台酒（珍品）'
