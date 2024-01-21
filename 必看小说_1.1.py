@@ -20,7 +20,7 @@ import time
 import os
 
 withdraws_item_id = '2'  #提现额度id，替换为需要提现的id，默认1元(仅限新用户)。【id1:1元，id2:5元，id3:10元，id4:30元，id5:50元，id6:100元】
-money_Withdrawal = 0  #自动提现开关，1开启 0关闭
+money_Withdrawal = 1  #自动提现开关，1开启 0关闭
 
 #执行任务
 def finish(taskId):
