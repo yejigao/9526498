@@ -1,6 +1,6 @@
 '''
 new Env('壹米众创');
-注册链接:http://ymzc.ihuju.cn/mobile/user/reg/reid/764859.html
+注册链接:http://ymzc.ihuju.cn/mobile/user/reg/reid/735689.html
 手动完成一遍悬赏
 BY:YourAhTzu
 日期:2.1 13:16
