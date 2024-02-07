@@ -1,6 +1,7 @@
 '''
 new Env('六度圈脉');
-注册链接:https://liudu.hongbaoquanzi.com/#/?spm=1583.1.0.4.1(27,28行手动内置ps:拉整体会覆盖)
+注册链接:.https://liudu.hongbaoquanzi.com/#/?spm=2121.1.0.4.1
+(27,28行手动内置ps:拉整体会覆盖)
 BY:YourAhTzu
 日期:2.5 11:04
 抓authorization填入ldqm函数多号@
