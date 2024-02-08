@@ -8,7 +8,7 @@
 ⚠️登录之后要先完善一下基本资料，首页-视频处打开个性化开关，再运行脚本，不然报错！⚠️
 看职位报错很正常，因为没那么多职位信息！！任务没做完就多运行几次。
 定时:每天一到二次
-cron: 3 9,14 * * *
+# cron "5 4,22 * * *" script-path=xxx.js,tag=匹配cron用
 new Env('65-上啥班');
 项目名称：上啥班
 下载地h:https://social.shangshaban.com/uniH5/#/pages/InviteFriends/share_invite_friends?userId=70725873617407644600716
