@@ -5,7 +5,7 @@
 变量名:shcmck
 注册登录之后进入页面开始抓包，随便点点，找到https://cmapi.shmedia.tech/media-basic-port/api开头的包，请求头里面token的值作为变量，多账号&隔开
 定时:一天一次即可
-cron: 5 8 * * *
+# cron "5 4,22 * * *" script-path=xxx.js,tag=匹配cron用
 new Env('73-上海崇明');
 项目名称：上海崇明
 */
