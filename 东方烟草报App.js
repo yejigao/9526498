@@ -1,5 +1,5 @@
 /**
- * cron 5 15 * * *
+ * cron "5 4 * * *" script-path=xxx.js,tag=匹配cron用
  * Show:东方烟草报App 积分换实物
  * 变量名:dfycToken
  * 变量值:POST请求任意链接包含https://eapp.eastobacco.com/index.php body中的token  多账号&分割 不是@ 和换行
