@@ -10,6 +10,7 @@ APP上观新闻，积分卡券或者实物，下载链接https://a.app.qq.com/o/
 变量名：sgxwck,多号换行分开，一天200多积分
 变量格式：手机号#密码#id，  如果不做登录任务，只填id即可
 id获取，登录app，把用户名的数字复制复制前6位，例：export sgxwck="8018XX",只需要前六位
+# cron "5 4 * * *" script-path=xxx.py,tag=匹配cron用
 '''
 
 deviceid = "dd97d90b-a519-4c45-9c72-28753734c1c"#建议抓包改成自己的
