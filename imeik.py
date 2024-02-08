@@ -2,6 +2,7 @@
 小程序: IMEIK 爱+
 抓包域名 user.imeik.com 下的 Authorization 多账号请使用 @ 分隔
 export imeikcks="Authorization1@Authorization2"
+# cron "5 4 * * *" script-path=xxx.py,tag=匹配cron用
 '''
 
 try:
