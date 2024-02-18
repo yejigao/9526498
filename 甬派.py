@@ -1,9 +1,10 @@
-/**
+ /**
  *  https://ypapp.cnnb.com.cn/yongpai-user/api/duiba/autologin  链接下的userId
- * 更新时间 1.16 自动获取抽奖ID
+ * 变量写脚本里面
  */
-const yongpai = "xxxxx#xxxxxx#xxxxxxx#xxxxxx"//格式为userId#deviceId支付宝账号#姓名 多账户&
-//手动点赞文章后https://ypapp.cnnb.com.cn/yongpai-ugc/api/praise/save_news?deviceId=的值 就是deviceId
+
+const yongpai = ""//格式为userId#支付宝账号#姓名 多账户&
+const deviceId = ""//点赞必填 手动点赞文章后https://ypapp.cnnb.com.cn/yongpai-ugc/api/praise/save_news?deviceId=的值
 //deviceId 一般是16位  必须真机抓 瞎写的的点赞不成功
 const axios = require("axios").default;
 var lodash = require('lodash');
@@ -21,19 +22,10 @@ function getUuid() {
 async function get_id() {
     let url = `https://ypapp.cnnb.com.cn/yongpai-news/api/v2/news/list?channelId=0&currentPage=1&timestamp=${new Date().getTime()}`;
     let res = await $.get(url);
-    for (let news of res.data.content) {
-        if (news.keywords) {
-            if (news.keywords.indexOf("转盘") !== -1) {
-                //console.log(news.channel[0].newsId)
-                let newsId = news.channel[0].newsId
-                url = `https://ypapp.cnnb.com.cn/yongpai-news/api/news/detail?newsId=${newsId}&userId=${$.userId}`;
-                res = await $.get(url);
-                $.id = res.data.body.split("?")[1].split("&")[0].replace("id=","")
-                //console.log( res.data.body.split("?")[1].split("&")[0].replace("id=",""))
-                return
-            }
-        }
-    }
+    let newsId = (res.data.content.find(c => c.title.includes("大转盘"))).newsId
+    url = `https://ypapp.cnnb.com.cn/yongpai-news/api/news/detail?newsId=${newsId}&userId=${$.userId}`;
+    res = await $.get(url);
+    $.id = /hdtool\/index\?id=(\d.*)&/.exec(res.data.body)[1]
 }
 async function get_autologin() {
     let url = `https://ypapp.cnnb.com.cn/yongpai-user/api/duiba/autologin?dbredirect=https%3A//92722.activity-12.m.duiba.com.cn/hdtool/index?id%3D${$.id}%26dbnewopen&userId=${$.userId}`;
@@ -45,6 +37,7 @@ async function get_token() {
     } catch (error) {
         $.wdata = error.response.headers["set-cookie"].filter(c => c.includes("wdata")).join(";")
     }
+
     let url = `https://92722.activity-12.m.duiba.com.cn/hdtool/index?id=${$.id}&dbnewopen&from=login&spm=92722.1.1.1`;
     let headers = {
         'authority': '92722.activity-12.m.duiba.com.cn',
@@ -88,7 +81,7 @@ async function doTask() {
         let likeHeaders = {
             "appversion": `10.1.4`,
         }
-        url = `https://ypapp.cnnb.com.cn/yongpai-ugc/api/praise/save_news?deviceId=${$.deviceId}&newsId=${newsId}&userId=${$.userId}`
+        url = `https://ypapp.cnnb.com.cn/yongpai-ugc/api/praise/save_news?deviceId=${deviceId}&newsId=${newsId}&userId=${$.userId}`
         res = await $.get(url, likeHeaders);
         //console.log(res)
         res.message == 'OK' ? $.addMsg(`点赞：[${item.title}]:✅`) : $.addMsg(`点赞：[${item.title}]:❌`)
@@ -170,13 +163,12 @@ async function doTakePrize() {
         $.addMsg(`账号${index + 1}:`);
         console.log(arr)
         $.userId = arr[index].split("#")[0];
-        $.deviceId = arr[index].split("#")[1]
-        $.account = arr[index].split("#")[2];
-        $.realName = arr[index].split("#")[3];
+        $.account = arr[index].split("#")[1];
+        $.realName = arr[index].split("#")[2];
         console.log($.userId, $.account)
         await doTask();
-        await get_id()
-        //$.id = 251912012489131
+        //await get_id()
+        $.id = 252639988828606
         await get_autologin();
         await get_token()
         await doJoin()
@@ -186,6 +178,7 @@ async function doTakePrize() {
     await $.SendMsg($._msg);
     $.done();
 })();
+
 function Env(name) {
     return new (class {
         constructor(name) {
