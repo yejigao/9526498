@@ -1,10 +1,9 @@
- /**
+/**
  *  https://ypapp.cnnb.com.cn/yongpai-user/api/duiba/autologin  链接下的userId
- * 变量写脚本里面
  */
 
-const yongpai = ""//格式为userId#支付宝账号#姓名 多账户&
-const deviceId = ""//点赞必填 手动点赞文章后https://ypapp.cnnb.com.cn/yongpai-ugc/api/praise/save_news?deviceId=的值
+const yongpai = ""//格式为userId#deviceId支付宝账号#姓名 多账户&
+//手动点赞文章后https://ypapp.cnnb.com.cn/yongpai-ugc/api/praise/save_news?deviceId=的值 就是deviceId
 //deviceId 一般是16位  必须真机抓 瞎写的的点赞不成功
 const axios = require("axios").default;
 var lodash = require('lodash');
@@ -81,7 +80,7 @@ async function doTask() {
         let likeHeaders = {
             "appversion": `10.1.4`,
         }
-        url = `https://ypapp.cnnb.com.cn/yongpai-ugc/api/praise/save_news?deviceId=${deviceId}&newsId=${newsId}&userId=${$.userId}`
+        url = `https://ypapp.cnnb.com.cn/yongpai-ugc/api/praise/save_news?deviceId=${$.deviceId}&newsId=${newsId}&userId=${$.userId}`
         res = await $.get(url, likeHeaders);
         //console.log(res)
         res.message == 'OK' ? $.addMsg(`点赞：[${item.title}]:✅`) : $.addMsg(`点赞：[${item.title}]:❌`)
@@ -163,12 +162,13 @@ async function doTakePrize() {
         $.addMsg(`账号${index + 1}:`);
         console.log(arr)
         $.userId = arr[index].split("#")[0];
-        $.account = arr[index].split("#")[1];
-        $.realName = arr[index].split("#")[2];
+        $.deviceId = arr[index].split("#")[1]
+        $.account = arr[index].split("#")[2];
+        $.realName = arr[index].split("#")[3];
         console.log($.userId, $.account)
         await doTask();
         //await get_id()
-        $.id = 252639988828606
+        $.id = 255562754277781
         await get_autologin();
         await get_token()
         await doJoin()
