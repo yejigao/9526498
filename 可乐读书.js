@@ -1,12 +1,12 @@
 oo0o ='''
 cron: 30 */30 8-22 * * *
 new Env('f可乐阅读');
-活动入口：http://90762702221442.evhjixw.cn/r?upuid=907627
+活动入口：http://13473101192140.blwvfvr.cn/r?upuid=134731
 使用方法：
-1.入口,WX打开：http://89933102211423.aaxogdc.cn/r?upuid=899331
+1.入口,WX打开：http://13473101192140.blwvfvr.cn/r?upuid=134731
 '''#line:7
 '''
-1.入口,WX打开http://90762702221442.evhjixw.cn/r?upuid=907627
+1.入口,WX打开http://13473101192140.blwvfvr.cn/r?upuid=134731
 若链接微信无法打开，请复制到浏览器复制新链接打开
 
 User_Agent参数1.5f版本UA可以不用填
