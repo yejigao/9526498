@@ -1,1419 +1,753 @@
-/*
- * @Author: lxk0301 https://gitee.com/lxk0301
- * @Date: 2020-08-19 16:12:40
- * @Last Modified by: whyour
- * @Last Modified time: 2021-5-1 15:00:54
- * sendNotify 推送通知功能
- * @param text 通知头
- * @param desp 通知体
- * @param params 某些推送通知方式点击弹窗可跳转, 例：{ url: 'https://abc.com' }
- * @param author 作者仓库等信息  例：`本通知 By：https://github.com/whyour/qinglong`
- */
+#!/usr/bin/env python3
+# _*_ coding:utf-8 _*_
+import base64
+import hashlib
+import hmac
+import json
+import os
+import re
+import threading
+import time
+import urllib.parse
+import smtplib
+from email.mime.text import MIMEText
+from email.header import Header
+from email.utils import formataddr
 
-const querystring = require('querystring');
-const got = require('got');
-const $ = new Env();
-const timeout = 15000; // 超时时间(单位毫秒)
-// =======================================gotify通知设置区域==============================================
-// gotify_url 填写gotify地址,如https://push.example.de:8080
-// gotify_token 填写gotify的消息应用token
-// gotify_priority 填写推送消息优先级,默认为0
-let GOTIFY_URL = '';
-let GOTIFY_TOKEN = '';
-let GOTIFY_PRIORITY = 0;
-// =======================================go-cqhttp通知设置区域===========================================
-// gobot_url 填写请求地址http://127.0.0.1/send_private_msg
-// gobot_token 填写在go-cqhttp文件设置的访问密钥
-// gobot_qq 填写推送到个人QQ或者QQ群号
-// go-cqhttp相关API https://docs.go-cqhttp.org/api
-let GOBOT_URL = ''; // 推送到个人QQ: http://127.0.0.1/send_private_msg  群：http://127.0.0.1/send_group_msg
-let GOBOT_TOKEN = ''; // 访问密钥
-let GOBOT_QQ = ''; // 如果GOBOT_URL设置 /send_private_msg 则需要填入 user_id=个人QQ 相反如果是 /send_group_msg 则需要填入 group_id=QQ群
+import requests
 
-// =======================================微信server酱通知设置区域===========================================
-// 此处填你申请的SCKEY.
-// (环境变量名 PUSH_KEY)
-let SCKEY = '';
+# 原先的 print 函数和主线程的锁
+_print = print
+mutex = threading.Lock()
 
-// =======================================PushDeer通知设置区域===========================================
-// 此处填你申请的PushDeer KEY.
-// (环境变量名 DEER_KEY)
-let PUSHDEER_KEY = '';
-let PUSHDEER_URL = '';
 
-// =======================================Synology Chat通知设置区域===========================================
-// 此处填你申请的CHAT_URL与CHAT_TOKEN
-// (环境变量名 CHAT_URL CHAT_TOKEN)
-let CHAT_URL = '';
-let CHAT_TOKEN = '';
+# 定义新的 print 函数
+def print(text, *args, **kw):
+    """
+    使输出有序进行，不出现多线程同一时间输出导致错乱的问题。
+    """
+    with mutex:
+        _print(text, *args, **kw)
 
-// =======================================Bark App通知设置区域===========================================
-// 此处填你BarkAPP的信息(IP/设备码，例如：https://api.day.app/XXXXXXXX)
-let BARK_PUSH = '';
-// BARK app推送图标,自定义推送图标(需iOS15或以上)
-let BARK_ICON = 'https://qn.whyour.cn/logo.png';
-// BARK app推送铃声,铃声列表去APP查看复制填写
-let BARK_SOUND = '';
-// BARK app推送消息的分组, 默认为"QingLong"
-let BARK_GROUP = 'QingLong';
-// BARK app推送消息的时效性, 默认为"active"
-let BARK_LEVEL = 'active';
-// BARK app推送消息的跳转URL
-let BARK_URL = '';
 
-// =======================================telegram机器人通知设置区域===========================================
-// 此处填你telegram bot 的Token，telegram机器人通知推送必填项.例如：1077xxx4424:AAFjv0FcqxxxxxxgEMGfi22B4yh15R5uw
-// (环境变量名 TG_BOT_TOKEN)
-let TG_BOT_TOKEN = '';
-// 此处填你接收通知消息的telegram用户的id，telegram机器人通知推送必填项.例如：129xxx206
-// (环境变量名 TG_USER_ID)
-let TG_USER_ID = '';
-// tg推送HTTP代理设置(不懂可忽略,telegram机器人通知推送功能中非必填)
-let TG_PROXY_HOST = ''; // 例如:127.0.0.1(环境变量名:TG_PROXY_HOST)
-let TG_PROXY_PORT = ''; // 例如:1080(环境变量名:TG_PROXY_PORT)
-let TG_PROXY_AUTH = ''; // tg代理配置认证参数
-// Telegram api自建的反向代理地址(不懂可忽略,telegram机器人通知推送功能中非必填),默认tg官方api(环境变量名:TG_API_HOST)
-let TG_API_HOST = 'https://api.telegram.org';
-// =======================================钉钉机器人通知设置区域===========================================
-// 此处填你钉钉 bot 的webhook，例如：5a544165465465645d0f31dca676e7bd07415asdasd
-// (环境变量名 DD_BOT_TOKEN)
-let DD_BOT_TOKEN = '';
-// 密钥，机器人安全设置页面，加签一栏下面显示的SEC开头的字符串
-let DD_BOT_SECRET = '';
+# 通知服务
+# fmt: off
+push_config = {
+    'HITOKOTO': False,  # 启用一言（随机句子）
 
-// =======================================企业微信基础设置===========================================
-// 企业微信反向代理地址
-// (环境变量名 QYWX_ORIGIN)
-let QYWX_ORIGIN = '';
-// =======================================企业微信机器人通知设置区域===========================================
-// 此处填你企业微信机器人的 webhook(详见文档 https://work.weixin.qq.com/api/doc/90000/90136/91770)，例如：693a91f6-7xxx-4bc4-97a0-0ec2sifa5aaa
-// (环境变量名 QYWX_KEY)
-let QYWX_KEY = '';
+    'BARK_PUSH': '',  # bark IP 或设备码，例：https://api.day.app/DxHcxxxxxRxxxxxxcm/
+    'BARK_ARCHIVE': '',  # bark 推送是否存档
+    'BARK_GROUP': '',  # bark 推送分组
+    'BARK_SOUND': '',  # bark 推送声音
+    'BARK_ICON': '',  # bark 推送图标
 
-// =======================================企业微信应用消息通知设置区域===========================================
-/*
- 此处填你企业微信应用消息的值(详见文档 https://work.weixin.qq.com/api/doc/90000/90135/90236)
- 环境变量名 QYWX_AM依次填入 corpid,corpsecret,touser(注:多个成员ID使用|隔开),agentid,消息类型(选填,不填默认文本消息类型)
- 注意用,号隔开(英文输入法的逗号)，例如：wwcff56746d9adwers,B-791548lnzXBE6_BWfxdf3kSTMJr9vFEPKAbh6WERQ,mingcheng,1000001,2COXgjH2UIfERF2zxrtUOKgQ9XklUqMdGSWLBoW_lSDAdafat
- 可选推送消息类型(推荐使用图文消息（mpnews）):
- - 文本卡片消息: 0 (数字零)
- - 文本消息: 1 (数字一)
- - 图文消息（mpnews）: 素材库图片id, 可查看此教程(http://note.youdao.com/s/HMiudGkb)或者(https://note.youdao.com/ynoteshare1/index.html?id=1a0c8aff284ad28cbd011b29b3ad0191&type=note)
- */
-let QYWX_AM = '';
+    'CONSOLE': True,  # 控制台输出
 
-// =======================================iGot聚合推送通知设置区域===========================================
-// 此处填您iGot的信息(推送key，例如：https://push.hellyw.com/XXXXXXXX)
-let IGOT_PUSH_KEY = '';
+    'DD_BOT_SECRET': '',  # 钉钉机器人的 DD_BOT_SECRET
+    'DD_BOT_TOKEN': '',  # 钉钉机器人的 DD_BOT_TOKEN
 
-// =======================================push+设置区域=======================================
-// 官方文档：http://www.pushplus.plus/
-// PUSH_PLUS_TOKEN：微信扫码登录后一对一推送或一对多推送下面的token(您的Token)，不提供PUSH_PLUS_USER则默认为一对一推送
-// PUSH_PLUS_USER： 一对多推送的“群组编码”（一对多推送下面->您的群组(如无则新建)->群组编码，如果您是创建群组人。也需点击“查看二维码”扫描绑定，否则不能接受群组消息推送）
-let PUSH_PLUS_TOKEN = '';
-let PUSH_PLUS_USER = '';
+    'FSKEY': '',  # 飞书机器人的 FSKEY
 
-// =======================================智能微秘书设置区域=======================================
-// 官方文档：http://wechat.aibotk.com/docs/about
-// AIBOTK_KEY： 填写智能微秘书个人中心的apikey
-// AIBOTK_TYPE：填写发送的目标 room 或 contact, 填其他的不生效
-// AIBOTK_NAME: 填写群名或用户昵称，和上面的type类型要对应
-let AIBOTK_KEY = '';
-let AIBOTK_TYPE = '';
-let AIBOTK_NAME = '';
+    'GOBOT_URL': '',  # go-cqhttp
+    # 推送到个人QQ：http://127.0.0.1/send_private_msg
+    # 群：http://127.0.0.1/send_group_msg
+    'GOBOT_QQ': '',  # go-cqhttp 的推送群或用户
+    # GOBOT_URL 设置 /send_private_msg 时填入 user_id=个人QQ
+    #               /send_group_msg   时填入 group_id=QQ群
+    'GOBOT_TOKEN': '',  # go-cqhttp 的 access_token
 
-// =======================================飞书机器人设置区域=======================================
-// 官方文档：https://www.feishu.cn/hc/zh-CN/articles/360024984973
-// FSKEY 飞书机器人的 FSKEY
-let FSKEY = '';
+    'GOTIFY_URL': '',  # gotify地址,如https://push.example.de:8080
+    'GOTIFY_TOKEN': '',  # gotify的消息应用token
+    'GOTIFY_PRIORITY': 0,  # 推送消息优先级,默认为0
 
-// =======================================SMTP 邮件设置区域=======================================
-// SMTP_SERVICE: 邮箱服务名称，比如126、163、Gmail、QQ等，支持列表 https://github.com/nodemailer/nodemailer/blob/master/lib/well-known/services.json
-// SMTP_EMAIL: 填写 SMTP 收发件邮箱，通知将会由自己发给自己
-// SMTP_PASSWORD: 填写 SMTP 登录密码，也可能为特殊口令，视具体邮件服务商说明而定
-// SMTP_NAME: 填写 SMTP 收发件人姓名，可随意填写
-let SMTP_SERVICE = '';
-let SMTP_EMAIL = '';
-let SMTP_PASSWORD = '';
-let SMTP_NAME = '';
+    'IGOT_PUSH_KEY': '',  # iGot 聚合推送的 IGOT_PUSH_KEY
 
-// =======================================PushMe通知设置区域===========================================
-// 官方文档：https://push.i-i.me/
-// 此处填你的PushMe KEY.
-let PUSHME_KEY = '';
+    'PUSH_KEY': '',  # server 酱的 PUSH_KEY，兼容旧版与 Turbo 版
 
-// =======================================CHRONOCAT通知设置区域===========================================
-// CHRONOCAT_URL Red协议连接地址 例： http://127.0.0.1:16530
-// CHRONOCAT_TOKEN 填写在CHRONOCAT文件生成的访问密钥
-// CHRONOCAT_QQ 个人:user_id=个人QQ 群则填入group_id=QQ群 多个用英文;隔开同时支持个人和群
-// CHRONOCAT相关API https://chronocat.vercel.app/install/docker/official/
-let CHRONOCAT_URL = ''; // CHRONOCAT Red协议连接地址
-let CHRONOCAT_TOKEN = ''; // CHRONOCAT 生成的访问密钥
-let CHRONOCAT_QQ = ''; // 个人:user_id=个人QQ 群则填入group_id=QQ群 多个用英文;隔开同时支持个人和群 如：user_id=xxx;group_id=xxxx;group_id=xxxxx
+    'DEER_KEY': '',  # PushDeer 的 PUSHDEER_KEY
+    'DEER_URL': '',  # PushDeer 的 PUSHDEER_URL
 
-// =======================================自定义通知设置区域=======================================
-// 自定义通知 接收回调的URL
-let WEBHOOK_URL = '';
-let WEBHOOK_BODY = '';
-let WEBHOOK_HEADERS = '';
-let WEBHOOK_METHOD = '';
-let WEBHOOK_CONTENT_TYPE = '';
+    'CHAT_URL': '',  # synology chat url
+    'CHAT_TOKEN': '',  # synology chat token
 
-// ==========================云端环境变量的判断与接收=========================
-if (process.env.GOTIFY_URL) {
-  GOTIFY_URL = process.env.GOTIFY_URL;
-}
-if (process.env.GOTIFY_TOKEN) {
-  GOTIFY_TOKEN = process.env.GOTIFY_TOKEN;
-}
-if (process.env.GOTIFY_PRIORITY) {
-  GOTIFY_PRIORITY = process.env.GOTIFY_PRIORITY;
-}
+    'PUSH_PLUS_TOKEN': '',  # push+ 微信推送的用户令牌
+    'PUSH_PLUS_USER': '',  # push+ 微信推送的群组编码
 
-if (process.env.GOBOT_URL) {
-  GOBOT_URL = process.env.GOBOT_URL;
-}
-if (process.env.GOBOT_TOKEN) {
-  GOBOT_TOKEN = process.env.GOBOT_TOKEN;
-}
-if (process.env.GOBOT_QQ) {
-  GOBOT_QQ = process.env.GOBOT_QQ;
-}
+    'QMSG_KEY': '',  # qmsg 酱的 QMSG_KEY
+    'QMSG_TYPE': '',  # qmsg 酱的 QMSG_TYPE
 
-if (process.env.PUSH_KEY) {
-  SCKEY = process.env.PUSH_KEY;
-}
+    'QYWX_ORIGIN': '',  # 企业微信代理地址
 
-if (process.env.DEER_KEY) {
-  PUSHDEER_KEY = process.env.DEER_KEY;
-  PUSHDEER_URL = process.env.DEER_URL;
-}
+    'QYWX_AM': '',  # 企业微信应用
 
-if (process.env.CHAT_URL) {
-  CHAT_URL = process.env.CHAT_URL;
-}
+    'QYWX_KEY': '',  # 企业微信机器人
 
-if (process.env.CHAT_TOKEN) {
-  CHAT_TOKEN = process.env.CHAT_TOKEN;
-}
+    'TG_BOT_TOKEN': '',  # tg 机器人的 TG_BOT_TOKEN，例：1407203283:AAG9rt-6RDaaX0HBLZQq0laNOh898iFYaRQ
+    'TG_USER_ID': '',  # tg 机器人的 TG_USER_ID，例：1434078534
+    'TG_API_HOST': '',  # tg 代理 api
+    'TG_PROXY_AUTH': '',  # tg 代理认证参数
+    'TG_PROXY_HOST': '',  # tg 机器人的 TG_PROXY_HOST
+    'TG_PROXY_PORT': '',  # tg 机器人的 TG_PROXY_PORT
 
-if (process.env.QQ_SKEY) {
-  QQ_SKEY = process.env.QQ_SKEY;
-}
+    'AIBOTK_KEY': '',  # 智能微秘书 个人中心的apikey 文档地址：http://wechat.aibotk.com/docs/about
+    'AIBOTK_TYPE': '',  # 智能微秘书 发送目标 room 或 contact
+    'AIBOTK_NAME': '',  # 智能微秘书  发送群名 或者好友昵称和type要对应好
 
-if (process.env.QQ_MODE) {
-  QQ_MODE = process.env.QQ_MODE;
-}
+    'SMTP_SERVER': '',  # SMTP 发送邮件服务器，形如 smtp.exmail.qq.com:465
+    'SMTP_SSL': 'false',  # SMTP 发送邮件服务器是否使用 SSL，填写 true 或 false
+    'SMTP_EMAIL': '',  # SMTP 收发件邮箱，通知将会由自己发给自己
+    'SMTP_PASSWORD': '',  # SMTP 登录密码，也可能为特殊口令，视具体邮件服务商说明而定
+    'SMTP_NAME': '',  # SMTP 收发件人姓名，可随意填写
 
-if (process.env.BARK_PUSH) {
-  if (
-    process.env.BARK_PUSH.indexOf('https') > -1 ||
-    process.env.BARK_PUSH.indexOf('http') > -1
-  ) {
-    // 兼容BARK自建用户
-    BARK_PUSH = process.env.BARK_PUSH;
-  } else {
-    BARK_PUSH = `https://api.day.app/${process.env.BARK_PUSH}`;
-  }
-  if (process.env.BARK_ICON) {
-    BARK_ICON = process.env.BARK_ICON;
-  }
-  if (process.env.BARK_SOUND) {
-    BARK_SOUND = process.env.BARK_SOUND;
-  }
-  if (process.env.BARK_GROUP) {
-    BARK_GROUP = process.env.BARK_GROUP;
-  }
-  if (process.env.BARK_LEVEL) {
-    BARK_LEVEL = process.env.BARK_LEVEL;
-  }
-  if (process.env.BARK_URL) {
-    BARK_URL = process.env.BARK_URL;
-  }
-} else {
-  if (
-    BARK_PUSH &&
-    BARK_PUSH.indexOf('https') === -1 &&
-    BARK_PUSH.indexOf('http') === -1
-  ) {
-    // 兼容BARK本地用户只填写设备码的情况
-    BARK_PUSH = `https://api.day.app/${BARK_PUSH}`;
-  }
+    'PUSHME_KEY': '',  # PushMe 酱的 PUSHME_KEY
 }
-if (process.env.TG_BOT_TOKEN) {
-  TG_BOT_TOKEN = process.env.TG_BOT_TOKEN;
-}
-if (process.env.TG_USER_ID) {
-  TG_USER_ID = process.env.TG_USER_ID;
-}
-if (process.env.TG_PROXY_AUTH) TG_PROXY_AUTH = process.env.TG_PROXY_AUTH;
-if (process.env.TG_PROXY_HOST) TG_PROXY_HOST = process.env.TG_PROXY_HOST;
-if (process.env.TG_PROXY_PORT) TG_PROXY_PORT = process.env.TG_PROXY_PORT;
-if (process.env.TG_API_HOST) TG_API_HOST = process.env.TG_API_HOST;
+notify_function = []
+# fmt: on
 
-if (process.env.DD_BOT_TOKEN) {
-  DD_BOT_TOKEN = process.env.DD_BOT_TOKEN;
-  if (process.env.DD_BOT_SECRET) {
-    DD_BOT_SECRET = process.env.DD_BOT_SECRET;
-  }
-}
+# 首先读取 面板变量 或者 github action 运行变量
+for k in push_config:
+    if os.getenv(k):
+        v = os.getenv(k)
+        push_config[k] = v
 
-if (process.env.QYWX_ORIGIN) {
-  QYWX_ORIGIN = process.env.QYWX_ORIGIN;
-} else {
-  QYWX_ORIGIN = 'https://qyapi.weixin.qq.com';
-}
 
-if (process.env.QYWX_KEY) {
-  QYWX_KEY = process.env.QYWX_KEY;
-}
+def bark(title: str, content: str) -> None:
+    """
+    使用 bark 推送消息。
+    """
+    if not push_config.get("BARK_PUSH"):
+        print("bark 服务的 BARK_PUSH 未设置!!\n取消推送")
+        return
+    print("bark 服务启动")
 
-if (process.env.QYWX_AM) {
-  QYWX_AM = process.env.QYWX_AM;
-}
+    if push_config.get("BARK_PUSH").startswith("http"):
+        url = f'{push_config.get("BARK_PUSH")}/{urllib.parse.quote_plus(title)}/{urllib.parse.quote_plus(content)}'
+    else:
+        url = f'https://api.day.app/{push_config.get("BARK_PUSH")}/{urllib.parse.quote_plus(title)}/{urllib.parse.quote_plus(content)}'
 
-if (process.env.IGOT_PUSH_KEY) {
-  IGOT_PUSH_KEY = process.env.IGOT_PUSH_KEY;
-}
-
-if (process.env.PUSH_PLUS_TOKEN) {
-  PUSH_PLUS_TOKEN = process.env.PUSH_PLUS_TOKEN;
-}
-if (process.env.PUSH_PLUS_USER) {
-  PUSH_PLUS_USER = process.env.PUSH_PLUS_USER;
-}
-
-if (process.env.AIBOTK_KEY) {
-  AIBOTK_KEY = process.env.AIBOTK_KEY;
-}
-if (process.env.AIBOTK_TYPE) {
-  AIBOTK_TYPE = process.env.AIBOTK_TYPE;
-}
-if (process.env.AIBOTK_NAME) {
-  AIBOTK_NAME = process.env.AIBOTK_NAME;
-}
-
-if (process.env.FSKEY) {
-  FSKEY = process.env.FSKEY;
-}
-
-if (process.env.SMTP_SERVICE) {
-  SMTP_SERVICE = process.env.SMTP_SERVICE;
-}
-if (process.env.SMTP_EMAIL) {
-  SMTP_EMAIL = process.env.SMTP_EMAIL;
-}
-if (process.env.SMTP_PASSWORD) {
-  SMTP_PASSWORD = process.env.SMTP_PASSWORD;
-}
-if (process.env.SMTP_NAME) {
-  SMTP_NAME = process.env.SMTP_NAME;
-}
-if (process.env.PUSHME_KEY) {
-  PUSHME_KEY = process.env.PUSHME_KEY;
-}
-
-if (process.env.CHRONOCAT_URL) {
-  CHRONOCAT_URL = process.env.CHRONOCAT_URL;
-}
-if (process.env.CHRONOCAT_QQ) {
-  CHRONOCAT_QQ = process.env.CHRONOCAT_QQ;
-}
-if (process.env.CHRONOCAT_TOKEN) {
-  CHRONOCAT_TOKEN = process.env.CHRONOCAT_TOKEN;
-}
-
-if (process.env.WEBHOOK_URL) {
-  WEBHOOK_URL = process.env.WEBHOOK_URL;
-}
-if (process.env.WEBHOOK_BODY) {
-  WEBHOOK_BODY = process.env.WEBHOOK_BODY;
-}
-if (process.env.WEBHOOK_HEADERS) {
-  WEBHOOK_HEADERS = process.env.WEBHOOK_HEADERS;
-}
-if (process.env.WEBHOOK_METHOD) {
-  WEBHOOK_METHOD = process.env.WEBHOOK_METHOD;
-}
-if (process.env.WEBHOOK_CONTENT_TYPE) {
-  WEBHOOK_CONTENT_TYPE = process.env.WEBHOOK_CONTENT_TYPE;
-}
-// ==========================云端环境变量的判断与接收=========================
-
-/**
- * sendNotify 推送通知功能
- * @param text 通知头
- * @param desp 通知体
- * @param params 某些推送通知方式点击弹窗可跳转, 例：{ url: 'https://abc.com' }
- * @param author 作者仓库等信息  例：`本通知 By：https://github.com/whyour/qinglong`
- * @returns {Promise<unknown>}
- */
-async function sendNotify(
-  text,
-  desp,
-  params = {},
-  author = '\n\n本通知 By：https://github.com/whyour/qinglong',
-) {
-  // 提供6种通知
-  desp += author; // 增加作者信息，防止被贩卖等
-
-  // 根据标题跳过一些消息推送，环境变量：SKIP_PUSH_TITLE 用回车分隔
-  let skipTitle = process.env.SKIP_PUSH_TITLE;
-  if (skipTitle) {
-    if (skipTitle.split('\n').includes(text)) {
-      console.info(text + '在SKIP_PUSH_TITLE环境变量内，跳过推送！');
-      return;
+    bark_params = {
+        "BARK_ARCHIVE": "isArchive",
+        "BARK_GROUP": "group",
+        "BARK_SOUND": "sound",
+        "BARK_ICON": "icon",
     }
-  }
+    params = ""
+    for pair in filter(
+            lambda pairs: pairs[0].startswith("BARK_")
+                          and pairs[0] != "BARK_PUSH"
+                          and pairs[1]
+                          and bark_params.get(pairs[0]),
+            push_config.items(),
+    ):
+        params += f"{bark_params.get(pair[0])}={pair[1]}&"
+    if params:
+        url = url + "?" + params.rstrip("&")
+    response = requests.get(url).json()
 
-  await Promise.all([
-    serverNotify(text, desp), // 微信server酱
-    pushPlusNotify(text, desp), // pushplus(推送加)
-  ]);
-  // 由于上述两种微信通知需点击进去才能查看到详情，故text(标题内容)携带了账号序号以及昵称信息，方便不点击也可知道是哪个京东哪个活动
-  text = text.match(/.*?(?=\s?-)/g) ? text.match(/.*?(?=\s?-)/g)[0] : text;
-  await Promise.all([
-    BarkNotify(text, desp, params), // iOS Bark APP
-    tgBotNotify(text, desp), // telegram 机器人
-    ddBotNotify(text, desp), // 钉钉机器人
-    qywxBotNotify(text, desp), // 企业微信机器人
-    qywxamNotify(text, desp), // 企业微信应用消息推送
-    iGotNotify(text, desp, params), // iGot
-    gobotNotify(text, desp), // go-cqhttp
-    gotifyNotify(text, desp), // gotify
-    ChatNotify(text, desp), // synolog chat
-    PushDeerNotify(text, desp), // PushDeer
-    aibotkNotify(text, desp), // 智能微秘书
-    fsBotNotify(text, desp), // 飞书机器人
-    smtpNotify(text, desp), // SMTP 邮件
-    pushMeNotify(text, desp, params), // PushMe
-    chronocatNotify(text, desp), // Chronocat
-    webhookNotify(text, desp), // 自定义通知
-  ]);
-}
+    if response["code"] == 200:
+        print("bark 推送成功！")
+    else:
+        print("bark 推送失败！")
 
-function gotifyNotify(text, desp) {
-  return new Promise((resolve) => {
-    if (GOTIFY_URL && GOTIFY_TOKEN) {
-      const options = {
-        url: `${GOTIFY_URL}/message?token=${GOTIFY_TOKEN}`,
-        body: `title=${encodeURIComponent(text)}&message=${encodeURIComponent(
-          desp,
-        )}&priority=${GOTIFY_PRIORITY}`,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      };
-      $.post(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log('gotify发送通知调用API失败！！\n');
-            console.log(err);
-          } else {
-            data = JSON.parse(data);
-            if (data.id) {
-              console.log('gotify发送通知消息成功🎉\n');
-            } else {
-              console.log(`${data.message}\n`);
-            }
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve();
-        }
-      });
-    } else {
-      resolve();
+
+def console(title: str, content: str) -> None:
+    """
+    使用 控制台 推送消息。
+    """
+    print(f"{title}\n\n{content}")
+
+
+def dingding_bot(title: str, content: str) -> None:
+    """
+    使用 钉钉机器人 推送消息。
+    """
+    if not push_config.get("DD_BOT_SECRET") or not push_config.get("DD_BOT_TOKEN"):
+        print("钉钉机器人 服务的 DD_BOT_SECRET 或者 DD_BOT_TOKEN 未设置!!\n取消推送")
+        return
+    print("钉钉机器人 服务启动")
+
+    timestamp = str(round(time.time() * 1000))
+    secret_enc = push_config.get("DD_BOT_SECRET").encode("utf-8")
+    string_to_sign = "{}\n{}".format(timestamp, push_config.get("DD_BOT_SECRET"))
+    string_to_sign_enc = string_to_sign.encode("utf-8")
+    hmac_code = hmac.new(
+        secret_enc, string_to_sign_enc, digestmod=hashlib.sha256
+    ).digest()
+    sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))
+    url = f'https://oapi.dingtalk.com/robot/send?access_token={push_config.get("DD_BOT_TOKEN")}&timestamp={timestamp}&sign={sign}'
+    headers = {"Content-Type": "application/json;charset=utf-8"}
+    data = {"msgtype": "text", "text": {"content": f"{title}\n\n{content}"}}
+    response = requests.post(
+        url=url, data=json.dumps(data), headers=headers, timeout=15
+    ).json()
+
+    if not response["errcode"]:
+        print("钉钉机器人 推送成功！")
+    else:
+        print("钉钉机器人 推送失败！")
+
+
+def feishu_bot(title: str, content: str) -> None:
+    """
+    使用 飞书机器人 推送消息。
+    """
+    if not push_config.get("FSKEY"):
+        print("飞书 服务的 FSKEY 未设置!!\n取消推送")
+        return
+    print("飞书 服务启动")
+
+    url = f'https://open.feishu.cn/open-apis/bot/v2/hook/{push_config.get("FSKEY")}'
+    data = {"msg_type": "text", "content": {"text": f"{title}\n\n{content}"}}
+    response = requests.post(url, data=json.dumps(data)).json()
+
+    if response.get("StatusCode") == 0:
+        print("飞书 推送成功！")
+    else:
+        print("飞书 推送失败！错误信息如下：\n", response)
+
+
+def go_cqhttp(title: str, content: str) -> None:
+    """
+    使用 go_cqhttp 推送消息。
+    """
+    if not push_config.get("GOBOT_URL") or not push_config.get("GOBOT_QQ"):
+        print("go-cqhttp 服务的 GOBOT_URL 或 GOBOT_QQ 未设置!!\n取消推送")
+        return
+    print("go-cqhttp 服务启动")
+
+    url = f'{push_config.get("GOBOT_URL")}?access_token={push_config.get("GOBOT_TOKEN")}&{push_config.get("GOBOT_QQ")}&message=标题:{title}\n内容:{content}'
+    response = requests.get(url).json()
+
+    if response["status"] == "ok":
+        print("go-cqhttp 推送成功！")
+    else:
+        print("go-cqhttp 推送失败！")
+
+
+def gotify(title: str, content: str) -> None:
+    """
+    使用 gotify 推送消息。
+    """
+    if not push_config.get("GOTIFY_URL") or not push_config.get("GOTIFY_TOKEN"):
+        print("gotify 服务的 GOTIFY_URL 或 GOTIFY_TOKEN 未设置!!\n取消推送")
+        return
+    print("gotify 服务启动")
+
+    url = f'{push_config.get("GOTIFY_URL")}/message?token={push_config.get("GOTIFY_TOKEN")}'
+    data = {
+        "title": title,
+        "message": content,
+        "priority": push_config.get("GOTIFY_PRIORITY"),
     }
-  });
-}
+    response = requests.post(url, data=data).json()
 
-function gobotNotify(text, desp) {
-  return new Promise((resolve) => {
-    if (GOBOT_URL) {
-      const options = {
-        url: `${GOBOT_URL}?access_token=${GOBOT_TOKEN}&${GOBOT_QQ}`,
-        json: { message: `${text}\n${desp}` },
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        timeout,
-      };
-      $.post(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log('发送go-cqhttp通知调用API失败！！\n');
-            console.log(err);
-          } else {
-            data = JSON.parse(data);
-            if (data.retcode === 0) {
-              console.log('go-cqhttp发送通知消息成功🎉\n');
-            } else if (data.retcode === 100) {
-              console.log(`go-cqhttp发送通知消息异常: ${data.errmsg}\n`);
-            } else {
-              console.log(`go-cqhttp发送通知消息异常\n${JSON.stringify(data)}`);
-            }
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve(data);
-        }
-      });
-    } else {
-      resolve();
+    if response.get("id"):
+        print("gotify 推送成功！")
+    else:
+        print("gotify 推送失败！")
+
+
+def iGot(title: str, content: str) -> None:
+    """
+    使用 iGot 推送消息。
+    """
+    if not push_config.get("IGOT_PUSH_KEY"):
+        print("iGot 服务的 IGOT_PUSH_KEY 未设置!!\n取消推送")
+        return
+    print("iGot 服务启动")
+
+    url = f'https://push.hellyw.com/{push_config.get("IGOT_PUSH_KEY")}'
+    data = {"title": title, "content": content}
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    response = requests.post(url, data=data, headers=headers).json()
+
+    if response["ret"] == 0:
+        print("iGot 推送成功！")
+    else:
+        print(f'iGot 推送失败！{response["errMsg"]}')
+
+
+def serverJ(title: str, content: str) -> None:
+    """
+    通过 serverJ 推送消息。
+    """
+    if not push_config.get("PUSH_KEY"):
+        print("serverJ 服务的 PUSH_KEY 未设置!!\n取消推送")
+        return
+    print("serverJ 服务启动")
+
+    data = {"text": title, "desp": content.replace("\n", "\n\n")}
+    if push_config.get("PUSH_KEY").find("SCT") != -1:
+        url = f'https://sctapi.ftqq.com/{push_config.get("PUSH_KEY")}.send'
+    else:
+        url = f'https://sc.ftqq.com/{push_config.get("PUSH_KEY")}.send'
+    response = requests.post(url, data=data).json()
+
+    if response.get("errno") == 0 or response.get("code") == 0:
+        print("serverJ 推送成功！")
+    else:
+        print(f'serverJ 推送失败！错误码：{response["message"]}')
+
+
+def pushdeer(title: str, content: str) -> None:
+    """
+    通过PushDeer 推送消息
+    """
+    if not push_config.get("DEER_KEY"):
+        print("PushDeer 服务的 DEER_KEY 未设置!!\n取消推送")
+        return
+    print("PushDeer 服务启动")
+    data = {
+        "text": title,
+        "desp": content,
+        "type": "markdown",
+        "pushkey": push_config.get("DEER_KEY"),
     }
-  });
-}
+    url = "https://api2.pushdeer.com/message/push"
+    if push_config.get("DEER_URL"):
+        url = push_config.get("DEER_URL")
 
-function serverNotify(text, desp) {
-  return new Promise((resolve) => {
-    if (SCKEY) {
-      // 微信server酱推送通知一个\n不会换行，需要两个\n才能换行，故做此替换
-      desp = desp.replace(/[\n\r]/g, '\n\n');
-      const options = {
-        url: SCKEY.includes('SCT')
-          ? `https://sctapi.ftqq.com/${SCKEY}.send`
-          : `https://sc.ftqq.com/${SCKEY}.send`,
-        body: `text=${text}&desp=${desp}`,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        timeout,
-      };
-      $.post(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log('发送通知调用API失败！！\n');
-            console.log(err);
-          } else {
-            data = JSON.parse(data);
-            // server酱和Server酱·Turbo版的返回json格式不太一样
-            if (data.errno === 0 || data.data.errno === 0) {
-              console.log('server酱发送通知消息成功🎉\n');
-            } else if (data.errno === 1024) {
-              // 一分钟内发送相同的内容会触发
-              console.log(`server酱发送通知消息异常: ${data.errmsg}\n`);
-            } else {
-              console.log(`server酱发送通知消息异常\n${JSON.stringify(data)}`);
-            }
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve(data);
-        }
-      });
-    } else {
-      resolve();
+    response = requests.post(url, data=data).json()
+
+    if len(response.get("content").get("result")) > 0:
+        print("PushDeer 推送成功！")
+    else:
+        print("PushDeer 推送失败！错误信息：", response)
+
+
+def chat(title: str, content: str) -> None:
+    """
+    通过Chat 推送消息
+    """
+    if not push_config.get("CHAT_URL") or not push_config.get("CHAT_TOKEN"):
+        print("chat 服务的 CHAT_URL或CHAT_TOKEN 未设置!!\n取消推送")
+        return
+    print("chat 服务启动")
+    data = "payload=" + json.dumps({"text": title + "\n" + content})
+    url = push_config.get("CHAT_URL") + push_config.get("CHAT_TOKEN")
+    response = requests.post(url, data=data)
+
+    if response.status_code == 200:
+        print("Chat 推送成功！")
+    else:
+        print("Chat 推送失败！错误信息：", response)
+
+
+def pushplus_bot(title: str, content: str) -> None:
+    """
+    通过 push+ 推送消息。
+    """
+    if not push_config.get("PUSH_PLUS_TOKEN"):
+        print("PUSHPLUS 服务的 PUSH_PLUS_TOKEN 未设置!!\n取消推送")
+        return
+    print("PUSHPLUS 服务启动")
+
+    url = "http://www.pushplus.plus/send"
+    data = {
+        "token": push_config.get("PUSH_PLUS_TOKEN"),
+        "title": title,
+        "content": content,
+        "topic": push_config.get("PUSH_PLUS_USER"),
     }
-  });
-}
+    body = json.dumps(data).encode(encoding="utf-8")
+    headers = {"Content-Type": "application/json"}
+    response = requests.post(url=url, data=body, headers=headers).json()
 
-function PushDeerNotify(text, desp) {
-  return new Promise((resolve) => {
-    if (PUSHDEER_KEY) {
-      // PushDeer 建议对消息内容进行 urlencode
-      desp = encodeURI(desp);
-      const options = {
-        url: PUSHDEER_URL || `https://api2.pushdeer.com/message/push`,
-        body: `pushkey=${PUSHDEER_KEY}&text=${text}&desp=${desp}&type=markdown`,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        timeout,
-      };
-      $.post(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log('发送通知调用API失败！！\n');
-            console.log(err);
-          } else {
-            data = JSON.parse(data);
-            // 通过返回的result的长度来判断是否成功
-            if (
-              data.content.result.length !== undefined &&
-              data.content.result.length > 0
-            ) {
-              console.log('PushDeer发送通知消息成功🎉\n');
-            } else {
-              console.log(`PushDeer发送通知消息异常\n${JSON.stringify(data)}`);
-            }
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve(data);
+    if response["code"] == 200:
+        print("PUSHPLUS 推送成功！")
+
+    else:
+        url_old = "http://pushplus.hxtrip.com/send"
+        headers["Accept"] = "application/json"
+        response = requests.post(url=url_old, data=body, headers=headers).json()
+
+        if response["code"] == 200:
+            print("PUSHPLUS(hxtrip) 推送成功！")
+
+        else:
+            print("PUSHPLUS 推送失败！")
+
+
+def qmsg_bot(title: str, content: str) -> None:
+    """
+    使用 qmsg 推送消息。
+    """
+    if not push_config.get("QMSG_KEY") or not push_config.get("QMSG_TYPE"):
+        print("qmsg 的 QMSG_KEY 或者 QMSG_TYPE 未设置!!\n取消推送")
+        return
+    print("qmsg 服务启动")
+
+    url = f'https://qmsg.zendee.cn/{push_config.get("QMSG_TYPE")}/{push_config.get("QMSG_KEY")}'
+    payload = {"msg": f'{title}\n\n{content.replace("----", "-")}'.encode("utf-8")}
+    response = requests.post(url=url, params=payload).json()
+
+    if response["code"] == 0:
+        print("qmsg 推送成功！")
+    else:
+        print(f'qmsg 推送失败！{response["reason"]}')
+
+
+def wecom_app(title: str, content: str) -> None:
+    """
+    通过 企业微信 APP 推送消息。
+    """
+    if not push_config.get("QYWX_AM"):
+        print("QYWX_AM 未设置!!\n取消推送")
+        return
+    QYWX_AM_AY = re.split(",", push_config.get("QYWX_AM"))
+    if 4 < len(QYWX_AM_AY) > 5:
+        print("QYWX_AM 设置错误!!\n取消推送")
+        return
+    print("企业微信 APP 服务启动")
+
+    corpid = QYWX_AM_AY[0]
+    corpsecret = QYWX_AM_AY[1]
+    touser = QYWX_AM_AY[2]
+    agentid = QYWX_AM_AY[3]
+    try:
+        media_id = QYWX_AM_AY[4]
+    except IndexError:
+        media_id = ""
+    wx = WeCom(corpid, corpsecret, agentid)
+    # 如果没有配置 media_id 默认就以 text 方式发送
+    if not media_id:
+        message = title + "\n\n" + content
+        response = wx.send_text(message, touser)
+    else:
+        response = wx.send_mpnews(title, content, media_id, touser)
+
+    if response == "ok":
+        print("企业微信推送成功！")
+    else:
+        print("企业微信推送失败！错误信息如下：\n", response)
+
+
+class WeCom:
+    def __init__(self, corpid, corpsecret, agentid):
+        self.CORPID = corpid
+        self.CORPSECRET = corpsecret
+        self.AGENTID = agentid
+        self.ORIGIN = "https://qyapi.weixin.qq.com"
+        if push_config.get("QYWX_ORIGIN"):
+            self.ORIGIN = push_config.get("QYWX_ORIGIN")
+
+    def get_access_token(self):
+        url = f"{self.ORIGIN}/cgi-bin/gettoken"
+        values = {
+            "corpid": self.CORPID,
+            "corpsecret": self.CORPSECRET,
         }
-      });
-    } else {
-      resolve();
-    }
-  });
-}
+        req = requests.post(url, params=values)
+        data = json.loads(req.text)
+        return data["access_token"]
 
-function ChatNotify(text, desp) {
-  return new Promise((resolve) => {
-    if (CHAT_URL && CHAT_TOKEN) {
-      // 对消息内容进行 urlencode
-      desp = encodeURI(desp);
-      const options = {
-        url: `${CHAT_URL}${CHAT_TOKEN}`,
-        body: `payload={"text":"${text}\n${desp}"}`,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      };
-      $.post(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log('发送通知调用API失败！！\n');
-            console.log(err);
-          } else {
-            data = JSON.parse(data);
-            if (data.success) {
-              console.log('Chat发送通知消息成功🎉\n');
-            } else {
-              console.log(`Chat发送通知消息异常\n${JSON.stringify(data)}`);
-            }
-          }
-        } catch (e) {
-          $.logErr(e);
-        } finally {
-          resolve(data);
+    def send_text(self, message, touser="@all"):
+        send_url = f"{self.ORIGIN}/cgi-bin/message/send?access_token={self.get_access_token()}"
+        send_values = {
+            "touser": touser,
+            "msgtype": "text",
+            "agentid": self.AGENTID,
+            "text": {"content": message},
+            "safe": "0",
         }
-      });
-    } else {
-      resolve();
-    }
-  });
-}
+        send_msges = bytes(json.dumps(send_values), "utf-8")
+        respone = requests.post(send_url, send_msges)
+        respone = respone.json()
+        return respone["errmsg"]
 
-function BarkNotify(text, desp, params = {}) {
-  return new Promise((resolve) => {
-    if (BARK_PUSH) {
-      const options = {
-        url: `${BARK_PUSH}/${encodeURIComponent(text)}/${encodeURIComponent(
-          desp,
-        )}?icon=${BARK_ICON}&sound=${BARK_SOUND}&group=${BARK_GROUP}&level=${BARK_LEVEL}&url=${BARK_URL}&${querystring.stringify(
-          params,
-        )}`,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        timeout,
-      };
-      $.get(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log('Bark APP发送通知调用API失败！！\n');
-            console.log(err);
-          } else {
-            data = JSON.parse(data);
-            if (data.code === 200) {
-              console.log('Bark APP发送通知消息成功🎉\n');
-            } else {
-              console.log(`${data.message}\n`);
-            }
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve();
-        }
-      });
-    } else {
-      resolve();
-    }
-  });
-}
-
-function tgBotNotify(text, desp) {
-  return new Promise((resolve) => {
-    if (TG_BOT_TOKEN && TG_USER_ID) {
-      const options = {
-        url: `${TG_API_HOST}/bot${TG_BOT_TOKEN}/sendMessage`,
-        json: {
-          chat_id: `${TG_USER_ID}`,
-          text: `${text}\n\n${desp}`,
-          disable_web_page_preview: true,
-        },
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        timeout,
-      };
-      if (TG_PROXY_HOST && TG_PROXY_PORT) {
-        const { HttpProxyAgent, HttpsProxyAgent } = require('hpagent');
-        const options = {
-          keepAlive: true,
-          keepAliveMsecs: 1000,
-          maxSockets: 256,
-          maxFreeSockets: 256,
-          proxy: `http://${TG_PROXY_AUTH}${TG_PROXY_HOST}:${TG_PROXY_PORT}`,
-        };
-        const httpAgent = new HttpProxyAgent(options);
-        const httpsAgent = new HttpsProxyAgent(options);
-        const agent = {
-          http: httpAgent,
-          https: httpsAgent,
-        };
-        Object.assign(options, { agent });
-      }
-      $.post(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log('telegram发送通知消息失败！！\n');
-            console.log(err);
-          } else {
-            data = JSON.parse(data);
-            if (data.ok) {
-              console.log('Telegram发送通知消息成功🎉。\n');
-            } else if (data.error_code === 400) {
-              console.log(
-                '请主动给bot发送一条消息并检查接收用户ID是否正确。\n',
-              );
-            } else if (data.error_code === 401) {
-              console.log('Telegram bot token 填写错误。\n');
-            }
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve(data);
-        }
-      });
-    } else {
-      resolve();
-    }
-  });
-}
-function ddBotNotify(text, desp) {
-  return new Promise((resolve) => {
-    const options = {
-      url: `https://oapi.dingtalk.com/robot/send?access_token=${DD_BOT_TOKEN}`,
-      json: {
-        msgtype: 'text',
-        text: {
-          content: `${text}\n\n${desp}`,
-        },
-      },
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      timeout,
-    };
-    if (DD_BOT_TOKEN && DD_BOT_SECRET) {
-      const crypto = require('crypto');
-      const dateNow = Date.now();
-      const hmac = crypto.createHmac('sha256', DD_BOT_SECRET);
-      hmac.update(`${dateNow}\n${DD_BOT_SECRET}`);
-      const result = encodeURIComponent(hmac.digest('base64'));
-      options.url = `${options.url}&timestamp=${dateNow}&sign=${result}`;
-      $.post(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log('钉钉发送通知消息失败！！\n');
-            console.log(err);
-          } else {
-            data = JSON.parse(data);
-            if (data.errcode === 0) {
-              console.log('钉钉发送通知消息成功🎉。\n');
-            } else {
-              console.log(`${data.errmsg}\n`);
-            }
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve(data);
-        }
-      });
-    } else if (DD_BOT_TOKEN) {
-      $.post(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log('钉钉发送通知消息失败！！\n');
-            console.log(err);
-          } else {
-            data = JSON.parse(data);
-            if (data.errcode === 0) {
-              console.log('钉钉发送通知消息完成。\n');
-            } else {
-              console.log(`${data.errmsg}\n`);
-            }
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve(data);
-        }
-      });
-    } else {
-      resolve();
-    }
-  });
-}
-
-function qywxBotNotify(text, desp) {
-  return new Promise((resolve) => {
-    const options = {
-      url: `${QYWX_ORIGIN}/cgi-bin/webhook/send?key=${QYWX_KEY}`,
-      json: {
-        msgtype: 'text',
-        text: {
-          content: `${text}\n\n${desp}`,
-        },
-      },
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      timeout,
-    };
-    if (QYWX_KEY) {
-      $.post(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log('企业微信发送通知消息失败！！\n');
-            console.log(err);
-          } else {
-            data = JSON.parse(data);
-            if (data.errcode === 0) {
-              console.log('企业微信发送通知消息成功🎉。\n');
-            } else {
-              console.log(`${data.errmsg}\n`);
-            }
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve(data);
-        }
-      });
-    } else {
-      resolve();
-    }
-  });
-}
-
-function ChangeUserId(desp) {
-  const QYWX_AM_AY = QYWX_AM.split(',');
-  if (QYWX_AM_AY[2]) {
-    const userIdTmp = QYWX_AM_AY[2].split('|');
-    let userId = '';
-    for (let i = 0; i < userIdTmp.length; i++) {
-      const count = '账号' + (i + 1);
-      const count2 = '签到号 ' + (i + 1);
-      if (desp.match(count2)) {
-        userId = userIdTmp[i];
-      }
-    }
-    if (!userId) userId = QYWX_AM_AY[2];
-    return userId;
-  } else {
-    return '@all';
-  }
-}
-
-function qywxamNotify(text, desp) {
-  return new Promise((resolve) => {
-    if (QYWX_AM) {
-      const QYWX_AM_AY = QYWX_AM.split(',');
-      const options_accesstoken = {
-        url: `${QYWX_ORIGIN}/cgi-bin/gettoken`,
-        json: {
-          corpid: `${QYWX_AM_AY[0]}`,
-          corpsecret: `${QYWX_AM_AY[1]}`,
-        },
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        timeout,
-      };
-      $.post(options_accesstoken, (err, resp, data) => {
-        let html = desp.replace(/\n/g, '<br/>');
-        let json = JSON.parse(data);
-        let accesstoken = json.access_token;
-        let options;
-
-        switch (QYWX_AM_AY[4]) {
-          case '0':
-            options = {
-              msgtype: 'textcard',
-              textcard: {
-                title: `${text}`,
-                description: `${desp}`,
-                url: 'https://github.com/whyour/qinglong',
-                btntxt: '更多',
-              },
-            };
-            break;
-
-          case '1':
-            options = {
-              msgtype: 'text',
-              text: {
-                content: `${text}\n\n${desp}`,
-              },
-            };
-            break;
-
-          default:
-            options = {
-              msgtype: 'mpnews',
-              mpnews: {
-                articles: [
-                  {
-                    title: `${text}`,
-                    thumb_media_id: `${QYWX_AM_AY[4]}`,
-                    author: `智能助手`,
-                    content_source_url: ``,
-                    content: `${html}`,
-                    digest: `${desp}`,
-                  },
-                ],
-              },
-            };
-        }
-        if (!QYWX_AM_AY[4]) {
-          // 如不提供第四个参数,则默认进行文本消息类型推送
-          options = {
-            msgtype: 'text',
-            text: {
-              content: `${text}\n\n${desp}`,
+    def send_mpnews(self, title, message, media_id, touser="@all"):
+        send_url = f"https://{self.HOST}/cgi-bin/message/send?access_token={self.get_access_token()}"
+        send_values = {
+            "touser": touser,
+            "msgtype": "mpnews",
+            "agentid": self.AGENTID,
+            "mpnews": {
+                "articles": [
+                    {
+                        "title": title,
+                        "thumb_media_id": media_id,
+                        "author": "Author",
+                        "content_source_url": "",
+                        "content": message.replace("\n", "<br/>"),
+                        "digest": message,
+                    }
+                ]
             },
-          };
         }
-        options = {
-          url: `${QYWX_ORIGIN}/cgi-bin/message/send?access_token=${accesstoken}`,
-          json: {
-            touser: `${ChangeUserId(desp)}`,
-            agentid: `${QYWX_AM_AY[3]}`,
-            safe: '0',
-            ...options,
-          },
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        };
+        send_msges = bytes(json.dumps(send_values), "utf-8")
+        respone = requests.post(send_url, send_msges)
+        respone = respone.json()
+        return respone["errmsg"]
 
-        $.post(options, (err, resp, data) => {
-          try {
-            if (err) {
-              console.log(
-                '成员ID:' +
-                  ChangeUserId(desp) +
-                  '企业微信应用消息发送通知消息失败！！\n',
-              );
-              console.log(err);
-            } else {
-              data = JSON.parse(data);
-              if (data.errcode === 0) {
-                console.log(
-                  '成员ID:' +
-                    ChangeUserId(desp) +
-                    '企业微信应用消息发送通知消息成功🎉。\n',
-                );
-              } else {
-                console.log(`${data.errmsg}\n`);
-              }
-            }
-          } catch (e) {
-            $.logErr(e, resp);
-          } finally {
-            resolve(data);
-          }
-        });
-      });
-    } else {
-      resolve();
+
+def wecom_bot(title: str, content: str) -> None:
+    """
+    通过 企业微信机器人 推送消息。
+    """
+    if not push_config.get("QYWX_KEY"):
+        print("企业微信机器人 服务的 QYWX_KEY 未设置!!\n取消推送")
+        return
+    print("企业微信机器人服务启动")
+
+    origin = "https://qyapi.weixin.qq.com"
+    if push_config.get("QYWX_ORIGIN"):
+        origin = push_config.get("QYWX_ORIGIN")
+
+    url = f"{origin}/cgi-bin/webhook/send?key={push_config.get('QYWX_KEY')}"
+    headers = {"Content-Type": "application/json;charset=utf-8"}
+    data = {"msgtype": "text", "text": {"content": f"{title}\n\n{content}"}}
+    response = requests.post(
+        url=url, data=json.dumps(data), headers=headers, timeout=15
+    ).json()
+
+    if response["errcode"] == 0:
+        print("企业微信机器人推送成功！")
+    else:
+        print("企业微信机器人推送失败！")
+
+
+def telegram_bot(title: str, content: str) -> None:
+    """
+    使用 telegram 机器人 推送消息。
+    """
+    if not push_config.get("TG_BOT_TOKEN") or not push_config.get("TG_USER_ID"):
+        print("tg 服务的 bot_token 或者 user_id 未设置!!\n取消推送")
+        return
+    print("tg 服务启动")
+
+    if push_config.get("TG_API_HOST"):
+        url = f"https://{push_config.get('TG_API_HOST')}/bot{push_config.get('TG_BOT_TOKEN')}/sendMessage"
+    else:
+        url = (
+            f"https://api.telegram.org/bot{push_config.get('TG_BOT_TOKEN')}/sendMessage"
+        )
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    payload = {
+        "chat_id": str(push_config.get("TG_USER_ID")),
+        "text": f"{title}\n\n{content}",
+        "disable_web_page_preview": "true",
     }
-  });
-}
+    proxies = None
+    if push_config.get("TG_PROXY_HOST") and push_config.get("TG_PROXY_PORT"):
+        if push_config.get("TG_PROXY_AUTH") is not None and "@" not in push_config.get(
+                "TG_PROXY_HOST"
+        ):
+            push_config["TG_PROXY_HOST"] = (
+                    push_config.get("TG_PROXY_AUTH")
+                    + "@"
+                    + push_config.get("TG_PROXY_HOST")
+            )
+        proxyStr = "http://{}:{}".format(
+            push_config.get("TG_PROXY_HOST"), push_config.get("TG_PROXY_PORT")
+        )
+        proxies = {"http": proxyStr, "https": proxyStr}
+    response = requests.post(
+        url=url, headers=headers, params=payload, proxies=proxies
+    ).json()
 
-function iGotNotify(text, desp, params = {}) {
-  return new Promise((resolve) => {
-    if (IGOT_PUSH_KEY) {
-      // 校验传入的IGOT_PUSH_KEY是否有效
-      const IGOT_PUSH_KEY_REGX = new RegExp('^[a-zA-Z0-9]{24}$');
-      if (!IGOT_PUSH_KEY_REGX.test(IGOT_PUSH_KEY)) {
-        console.log('您所提供的IGOT_PUSH_KEY无效\n');
-        resolve();
-        return;
-      }
-      const options = {
-        url: `https://push.hellyw.com/${IGOT_PUSH_KEY.toLowerCase()}`,
-        body: `title=${text}&content=${desp}&${querystring.stringify(params)}`,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        timeout,
-      };
-      $.post(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log('发送通知调用API失败！！\n');
-            console.log(err);
-          } else {
-            if (typeof data === 'string') data = JSON.parse(data);
-            if (data.ret === 0) {
-              console.log('iGot发送通知消息成功🎉\n');
-            } else {
-              console.log(`iGot发送通知消息失败：${data.errMsg}\n`);
-            }
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve(data);
+    if response["ok"]:
+        print("tg 推送成功！")
+    else:
+        print("tg 推送失败！")
+
+
+def aibotk(title: str, content: str) -> None:
+    """
+    使用 智能微秘书 推送消息。
+    """
+    if (
+            not push_config.get("AIBOTK_KEY")
+            or not push_config.get("AIBOTK_TYPE")
+            or not push_config.get("AIBOTK_NAME")
+    ):
+        print("智能微秘书 的 AIBOTK_KEY 或者 AIBOTK_TYPE 或者 AIBOTK_NAME 未设置!!\n取消推送")
+        return
+    print("智能微秘书 服务启动")
+
+    if push_config.get("AIBOTK_TYPE") == "room":
+        url = "https://api-bot.aibotk.com/openapi/v1/chat/room"
+        data = {
+            "apiKey": push_config.get("AIBOTK_KEY"),
+            "roomName": push_config.get("AIBOTK_NAME"),
+            "message": {"type": 1, "content": f"【青龙快讯】\n\n{title}\n{content}"},
         }
-      });
-    } else {
-      resolve();
-    }
-  });
-}
-
-function pushPlusNotify(text, desp) {
-  return new Promise((resolve) => {
-    if (PUSH_PLUS_TOKEN) {
-      desp = desp.replace(/[\n\r]/g, '<br>'); // 默认为html, 不支持plaintext
-      const body = {
-        token: `${PUSH_PLUS_TOKEN}`,
-        title: `${text}`,
-        content: `${desp}`,
-        topic: `${PUSH_PLUS_USER}`,
-      };
-      const options = {
-        url: `https://www.pushplus.plus/send`,
-        body: JSON.stringify(body),
-        headers: {
-          'Content-Type': ' application/json',
-        },
-        timeout,
-      };
-      $.post(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log(
-              `push+发送${
-                PUSH_PLUS_USER ? '一对多' : '一对一'
-              }通知消息失败！！\n`,
-            );
-            console.log(err);
-          } else {
-            data = JSON.parse(data);
-            if (data.code === 200) {
-              console.log(
-                `push+发送${
-                  PUSH_PLUS_USER ? '一对多' : '一对一'
-                }通知消息完成。\n`,
-              );
-            } else {
-              console.log(
-                `push+发送${
-                  PUSH_PLUS_USER ? '一对多' : '一对一'
-                }通知消息失败：${data.msg}\n`,
-              );
-            }
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve(data);
+    else:
+        url = "https://api-bot.aibotk.com/openapi/v1/chat/contact"
+        data = {
+            "apiKey": push_config.get("AIBOTK_KEY"),
+            "name": push_config.get("AIBOTK_NAME"),
+            "message": {"type": 1, "content": f"【青龙快讯】\n\n{title}\n{content}"},
         }
-      });
-    } else {
-      resolve();
+    body = json.dumps(data).encode(encoding="utf-8")
+    headers = {"Content-Type": "application/json"}
+    response = requests.post(url=url, data=body, headers=headers).json()
+    print(response)
+    if response["code"] == 0:
+        print("智能微秘书 推送成功！")
+    else:
+        print(f'智能微秘书 推送失败！{response["error"]}')
+
+
+def smtp(title: str, content: str) -> None:
+    """
+    使用 SMTP 邮件 推送消息。
+    """
+    if (
+            not push_config.get("SMTP_SERVER")
+            or not push_config.get("SMTP_SSL")
+            or not push_config.get("SMTP_EMAIL")
+            or not push_config.get("SMTP_PASSWORD")
+            or not push_config.get("SMTP_NAME")
+    ):
+        print(
+            "SMTP 邮件 的 SMTP_SERVER 或者 SMTP_SSL 或者 SMTP_EMAIL 或者 SMTP_PASSWORD 或者 SMTP_NAME 未设置!!\n取消推送"
+        )
+        return
+    print("SMTP 邮件 服务启动")
+
+    message = MIMEText(content, "plain", "utf-8")
+    message["From"] = formataddr(
+        (
+            Header(push_config.get("SMTP_NAME"), "utf-8").encode(),
+            push_config.get("SMTP_EMAIL"),
+        )
+    )
+    message["To"] = formataddr(
+        (
+            Header(push_config.get("SMTP_NAME"), "utf-8").encode(),
+            push_config.get("SMTP_EMAIL"),
+        )
+    )
+    message["Subject"] = Header(title, "utf-8")
+
+    try:
+        smtp_server = (
+            smtplib.SMTP_SSL(push_config.get("SMTP_SERVER"))
+            if push_config.get("SMTP_SSL") == "true"
+            else smtplib.SMTP(push_config.get("SMTP_SERVER"))
+        )
+        smtp_server.login(
+            push_config.get("SMTP_EMAIL"), push_config.get("SMTP_PASSWORD")
+        )
+        smtp_server.sendmail(
+            push_config.get("SMTP_EMAIL"),
+            push_config.get("SMTP_EMAIL"),
+            message.as_bytes(),
+        )
+        smtp_server.close()
+        print("SMTP 邮件 推送成功！")
+    except Exception as e:
+        print(f"SMTP 邮件 推送失败！{e}")
+
+
+def pushme(title: str, content: str) -> None:
+    """
+    使用 PushMe 推送消息。
+    """
+    if not push_config.get("PUSHME_KEY"):
+        print("PushMe 服务的 PUSHME_KEY 未设置!!\n取消推送")
+        return
+    print("PushMe 服务启动")
+
+    url = f'https://push.i-i.me/?push_key={push_config.get("PUSHME_KEY")}'
+    data = {
+        "title": title,
+        "content": content,
     }
-  });
-}
+    response = requests.post(url, data=data)
 
-function aibotkNotify(text, desp) {
-  return new Promise((resolve) => {
-    if (AIBOTK_KEY && AIBOTK_TYPE && AIBOTK_NAME) {
-      let json = {};
-      let url = '';
-      switch (AIBOTK_TYPE) {
-        case 'room':
-          url = 'https://api-bot.aibotk.com/openapi/v1/chat/room';
-          json = {
-            apiKey: `${AIBOTK_KEY}`,
-            roomName: `${AIBOTK_NAME}`,
-            message: {
-              type: 1,
-              content: `【青龙快讯】\n\n${text}\n${desp}`,
-            },
-          };
-          break;
-        case 'contact':
-          url = 'https://api-bot.aibotk.com/openapi/v1/chat/contact';
-          json = {
-            apiKey: `${AIBOTK_KEY}`,
-            name: `${AIBOTK_NAME}`,
-            message: {
-              type: 1,
-              content: `【青龙快讯】\n\n${text}\n${desp}`,
-            },
-          };
-          break;
-      }
-      const options = {
-        url: url,
-        json,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        timeout,
-      };
-      $.post(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log('智能微秘书发送通知消息失败！！\n');
-            console.log(err);
-          } else {
-            data = JSON.parse(data);
-            if (data.code === 0) {
-              console.log('智能微秘书发送通知消息成功🎉。\n');
-            } else {
-              console.log(`${data.error}\n`);
-            }
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve(data);
-        }
-      });
-    } else {
-      resolve();
-    }
-  });
-}
+    if response.status_code == 200 and response.text == "success":
+        print("PushMe 推送成功！")
+    else:
+        print(f"PushMe 推送失败！{response.status_code} {response.text}")
 
-function fsBotNotify(text, desp) {
-  return new Promise((resolve) => {
-    if (FSKEY) {
-      const options = {
-        url: `https://open.feishu.cn/open-apis/bot/v2/hook/${FSKEY}`,
-        json: { msg_type: 'text', content: { text: `${text}\n\n${desp}` } },
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        timeout,
-      };
-      $.post(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log('发送通知调用API失败！！\n');
-            console.log(err);
-          } else {
-            data = JSON.parse(data);
-            if (data.StatusCode === 0) {
-              console.log('飞书发送通知消息成功🎉\n');
-            } else {
-              console.log(`${data.msg}\n`);
-            }
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve(data);
-        }
-      });
-    } else {
-      resolve();
-    }
-  });
-}
 
-async function smtpNotify(text, desp) {
-  if (![SMTP_EMAIL, SMTP_PASSWORD].every(Boolean) || !SMTP_SERVICE) {
-    return;
-  }
+def one() -> str:
+    """
+    获取一条一言。
+    :return:
+    """
+    url = "https://v1.hitokoto.cn/"
+    res = requests.get(url).json()
+    return res["hitokoto"] + "    ----" + res["from"]
 
-  try {
-    const nodemailer = require('nodemailer');
-    const transporter = nodemailer.createTransport({
-      service: SMTP_SERVICE,
-      auth: {
-        user: SMTP_EMAIL,
-        pass: SMTP_PASSWORD,
-      },
-    });
 
-    const addr = SMTP_NAME ? `"${SMTP_NAME}" <${SMTP_EMAIL}>` : SMTP_EMAIL;
-    const info = await transporter.sendMail({
-      from: addr,
-      to: addr,
-      subject: text,
-      html: `${desp.replace(/\n/g, '<br/>')}`,
-    });
+if push_config.get("BARK_PUSH"):
+    notify_function.append(bark)
+if push_config.get("CONSOLE"):
+    notify_function.append(console)
+if push_config.get("DD_BOT_TOKEN") and push_config.get("DD_BOT_SECRET"):
+    notify_function.append(dingding_bot)
+if push_config.get("FSKEY"):
+    notify_function.append(feishu_bot)
+if push_config.get("GOBOT_URL") and push_config.get("GOBOT_QQ"):
+    notify_function.append(go_cqhttp)
+if push_config.get("GOTIFY_URL") and push_config.get("GOTIFY_TOKEN"):
+    notify_function.append(gotify)
+if push_config.get("IGOT_PUSH_KEY"):
+    notify_function.append(iGot)
+if push_config.get("PUSH_KEY"):
+    notify_function.append(serverJ)
+if push_config.get("DEER_KEY"):
+    notify_function.append(pushdeer)
+if push_config.get("CHAT_URL") and push_config.get("CHAT_TOKEN"):
+    notify_function.append(chat)
+if push_config.get("PUSH_PLUS_TOKEN"):
+    notify_function.append(pushplus_bot)
+if push_config.get("QMSG_KEY") and push_config.get("QMSG_TYPE"):
+    notify_function.append(qmsg_bot)
+if push_config.get("QYWX_AM"):
+    notify_function.append(wecom_app)
+if push_config.get("QYWX_KEY"):
+    notify_function.append(wecom_bot)
+if push_config.get("TG_BOT_TOKEN") and push_config.get("TG_USER_ID"):
+    notify_function.append(telegram_bot)
+if (
+        push_config.get("AIBOTK_KEY")
+        and push_config.get("AIBOTK_TYPE")
+        and push_config.get("AIBOTK_NAME")
+):
+    notify_function.append(aibotk)
+if (
+        push_config.get("SMTP_SERVER")
+        and push_config.get("SMTP_SSL")
+        and push_config.get("SMTP_EMAIL")
+        and push_config.get("SMTP_PASSWORD")
+        and push_config.get("SMTP_NAME")
+):
+    notify_function.append(smtp)
+if push_config.get("PUSHME_KEY"):
+    notify_function.append(pushme)
 
-    transporter.close();
 
-    if (info.messageId) {
-      console.log('SMTP发送通知消息成功🎉\n');
-      return true;
-    }
-    console.log('SMTP发送通知消息失败！！\n');
-  } catch (e) {
-    console.log('SMTP发送通知消息出现错误！！\n');
-    console.log(e);
-  }
-}
+def send(title: str, content: str) -> None:
+    if not content:
+        print(f"{title} 推送内容为空！")
+        return
 
-function pushMeNotify(text, desp, params = {}) {
-  return new Promise((resolve) => {
-    if (PUSHME_KEY) {
-      const options = {
-        url: `https://push.i-i.me?push_key=${PUSHME_KEY}`,
-        json: { title: text, content: desp, ...params },
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        timeout,
-      };
-      $.post(options, (err, resp, data) => {
-        try {
-          if (err) {
-            console.log('PushMeNotify发送通知调用API失败！！\n');
-            console.log(err);
-          } else {
-            if (data === 'success') {
-              console.log('PushMe发送通知消息成功🎉\n');
-            } else {
-              console.log(`${data}\n`);
-            }
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve(data);
-        }
-      });
-    } else {
-      resolve();
-    }
-  });
-}
+    # 根据标题跳过一些消息推送，环境变量：SKIP_PUSH_TITLE 用回车分隔
+    skipTitle = os.getenv("SKIP_PUSH_TITLE")
+    if skipTitle:
+        if title in re.split("\n", skipTitle):
+            print(f"{title} 在SKIP_PUSH_TITLE环境变量内，跳过推送！")
+            return
 
-function chronocatNotify(title, desp) {
-  return new Promise((resolve) => {
-    if (!CHRONOCAT_TOKEN || !CHRONOCAT_QQ || !CHRONOCAT_URL) {
-      resolve();
-      return;
-    }
+    hitokoto = push_config.get("HITOKOTO")
 
-    const user_ids = CHRONOCAT_QQ.match(/user_id=(\d+)/g)?.map(
-      (match) => match.split('=')[1],
-    );
-    const group_ids = CHRONOCAT_QQ.match(/group_id=(\d+)/g)?.map(
-      (match) => match.split('=')[1],
-    );
+    text = one() if hitokoto else ""
+    content += "大自然的搬运工\nhttp://www.bedee.top/\n\n" + text
 
-    const url = `${CHRONOCAT_URL}/api/message/send`;
-    const headers = {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${CHRONOCAT_TOKEN}`,
-    };
+    ts = [
+        threading.Thread(target=mode, args=(title, content), name=mode.__name__)
+        for mode in notify_function
+    ]
+    [t.start() for t in ts]
+    [t.join() for t in ts]
 
-    for (const [chat_type, ids] of [
-      [1, user_ids],
-      [2, group_ids],
-    ]) {
-      if (!ids) {
-        continue;
-      }
-      for (const chat_id of ids) {
-        const data = {
-          peer: {
-            chatType: chat_type,
-            peerUin: chat_id,
-          },
-          elements: [
-            {
-              elementType: 1,
-              textElement: {
-                content: `${title}\n\n${desp}`,
-              },
-            },
-          ],
-        };
-        const options = {
-          url: url,
-          json: data,
-          headers,
-          timeout,
-        };
-        $.post(options, (err, resp, data) => {
-          try {
-            if (err) {
-              console.log('Chronocat发送QQ通知消息失败！！\n');
-              console.log(err);
-            } else {
-              data = JSON.parse(data);
-              if (chat_type === 1) {
-                console.log(`QQ个人消息:${ids}推送成功！`);
-              } else {
-                console.log(`QQ群消息:${ids}推送成功！`);
-              }
-            }
-          } catch (e) {
-            $.logErr(e, resp);
-          } finally {
-            resolve(data);
-          }
-        });
-      }
-    }
-  });
-}
 
-function webhookNotify(text, desp) {
-  return new Promise((resolve) => {
-    const { formatBody, formatUrl } = formatNotifyContentFun(
-      WEBHOOK_URL,
-      WEBHOOK_BODY,
-      text,
-      desp,
-    );
-    if (!formatUrl && !formatBody) {
-      resolve();
-      return;
-    }
-    const headers = parseHeaders(WEBHOOK_HEADERS);
-    const body = parseBody(formatBody, WEBHOOK_CONTENT_TYPE);
-    const bodyParam = formatBodyFun(WEBHOOK_CONTENT_TYPE, body);
-    const options = {
-      method: WEBHOOK_METHOD,
-      headers,
-      allowGetBody: true,
-      ...bodyParam,
-      timeout,
-      retry: 1,
-    };
+def main():
+    send("title", "content")
 
-    if (WEBHOOK_METHOD) {
-      got(formatUrl, options).then((resp) => {
-        try {
-          if (resp.statusCode !== 200) {
-            console.log(`自定义发送通知消息失败！！\n${resp.body}`);
-          } else {
-            console.log(`自定义发送通知消息成功🎉。\n${resp.body}`);
-          }
-        } catch (e) {
-          $.logErr(e, resp);
-        } finally {
-          resolve(resp.body);
-        }
-      });
-    } else {
-      resolve();
-    }
-  });
-}
 
-function parseHeaders(headers) {
-  if (!headers) return {};
-
-  const parsed = {};
-  let key;
-  let val;
-  let i;
-
-  headers &&
-    headers.split('\n').forEach(function parser(line) {
-      i = line.indexOf(':');
-      key = line.substring(0, i).trim().toLowerCase();
-      val = line.substring(i + 1).trim();
-
-      if (!key) {
-        return;
-      }
-
-      parsed[key] = parsed[key] ? parsed[key] + ', ' + val : val;
-    });
-
-  return parsed;
-}
-
-function parseBody(body, contentType) {
-  if (contentType === 'text/plain' || !body) {
-    return body;
-  }
-
-  const parsed = {};
-  let key;
-  let val;
-  let i;
-
-  body &&
-    body.split('\n').forEach(function parser(line) {
-      i = line.indexOf(':');
-      key = line.substring(0, i).trim();
-      val = line.substring(i + 1).trim();
-
-      if (!key || parsed[key]) {
-        return;
-      }
-
-      try {
-        const jsonValue = JSON.parse(val);
-        parsed[key] = jsonValue;
-      } catch (error) {
-        parsed[key] = val;
-      }
-    });
-
-  switch (contentType) {
-    case 'multipart/form-data':
-      return Object.keys(parsed).reduce((p, c) => {
-        p.append(c, parsed[c]);
-        return p;
-      }, new FormData());
-    case 'application/x-www-form-urlencoded':
-      return Object.keys(parsed).reduce((p, c) => {
-        return p ? `${p}&${c}=${parsed[c]}` : `${c}=${parsed[c]}`;
-      });
-  }
-
-  return parsed;
-}
-
-function formatBodyFun(contentType, body) {
-  if (!body) return {};
-  switch (contentType) {
-    case 'application/json':
-      return { json: body };
-    case 'multipart/form-data':
-      return { form: body };
-    case 'application/x-www-form-urlencoded':
-      return { body };
-  }
-  return {};
-}
-
-function formatNotifyContentFun(url, body, title, content) {
-  if (!url.includes('$title') && !body.includes('$title')) {
-    return {};
-  }
-
-  return {
-    formatUrl: url
-      .replaceAll('$title', encodeURIComponent(title))
-      .replaceAll('$content', encodeURIComponent(content)),
-    formatBody: body
-      .replaceAll('$title', title)
-      .replaceAll('$content', content),
-  };
-}
-
-module.exports = {
-  sendNotify,
-  BARK_PUSH,
-};
-
-// prettier-ignore
-function Env(t, s) { return new class { constructor(t, s) { this.name = t, this.data = null, this.dataFile = "box.dat", this.logs = [], this.logSeparator = "\n", this.startTime = (new Date).getTime(), Object.assign(this, s), this.log("", `\ud83d\udd14${this.name}, \u5f00\u59cb!`) } isNode() { return "undefined" != typeof module && !!module.exports } isQuanX() { return "undefined" != typeof $task } isSurge() { return "undefined" != typeof $httpClient && "undefined" == typeof $loon } isLoon() { return "undefined" != typeof $loon } getScript(t) { return new Promise(s => { $.get({ url: t }, (t, e, i) => s(i)) }) } runScript(t, s) { return new Promise(e => { let i = this.getdata("@chavy_boxjs_userCfgs.httpapi"); i = i ? i.replace(/\n/g, "").trim() : i; let o = this.getdata("@chavy_boxjs_userCfgs.httpapi_timeout"); o = o ? 1 * o : 20, o = s && s.timeout ? s.timeout : o; const [h, a] = i.split("@"), r = { url: `http://${a}/v1/scripting/evaluate`, body: { script_text: t, mock_type: "cron", timeout: o }, headers: { "X-Key": h, Accept: "*/*" } }; $.post(r, (t, s, i) => e(i)) }).catch(t => this.logErr(t)) } loaddata() { if (!this.isNode()) return {}; { this.fs = this.fs ? this.fs : require("fs"), this.path = this.path ? this.path : require("path"); const t = this.path.resolve(this.dataFile), s = this.path.resolve(process.cwd(), this.dataFile), e = this.fs.existsSync(t), i = !e && this.fs.existsSync(s); if (!e && !i) return {}; { const i = e ? t : s; try { return JSON.parse(this.fs.readFileSync(i)) } catch (t) { return {} } } } } writedata() { if (this.isNode()) { this.fs = this.fs ? this.fs : require("fs"), this.path = this.path ? this.path : require("path"); const t = this.path.resolve(this.dataFile), s = this.path.resolve(process.cwd(), this.dataFile), e = this.fs.existsSync(t), i = !e && this.fs.existsSync(s), o = JSON.stringify(this.data); e ? this.fs.writeFileSync(t, o) : i ? this.fs.writeFileSync(s, o) : this.fs.writeFileSync(t, o) } } lodash_get(t, s, e) { const i = s.replace(/\[(\d+)\]/g, ".$1").split("."); let o = t; for (const t of i) if (o = Object(o)[t], void 0 === o) return e; return o } lodash_set(t, s, e) { return Object(t) !== t ? t : (Array.isArray(s) || (s = s.toString().match(/[^.[\]]+/g) || []), s.slice(0, -1).reduce((t, e, i) => Object(t[e]) === t[e] ? t[e] : t[e] = Math.abs(s[i + 1]) >> 0 == +s[i + 1] ? [] : {}, t)[s[s.length - 1]] = e, t) } getdata(t) { let s = this.getval(t); if (/^@/.test(t)) { const [, e, i] = /^@(.*?)\.(.*?)$/.exec(t), o = e ? this.getval(e) : ""; if (o) try { const t = JSON.parse(o); s = t ? this.lodash_get(t, i, "") : s } catch (t) { s = "" } } return s } setdata(t, s) { let e = !1; if (/^@/.test(s)) { const [, i, o] = /^@(.*?)\.(.*?)$/.exec(s), h = this.getval(i), a = i ? "null" === h ? null : h || "{}" : "{}"; try { const s = JSON.parse(a); this.lodash_set(s, o, t), e = this.setval(JSON.stringify(s), i) } catch (s) { const h = {}; this.lodash_set(h, o, t), e = this.setval(JSON.stringify(h), i) } } else e = $.setval(t, s); return e } getval(t) { return this.isSurge() || this.isLoon() ? $persistentStore.read(t) : this.isQuanX() ? $prefs.valueForKey(t) : this.isNode() ? (this.data = this.loaddata(), this.data[t]) : this.data && this.data[t] || null } setval(t, s) { return this.isSurge() || this.isLoon() ? $persistentStore.write(t, s) : this.isQuanX() ? $prefs.setValueForKey(t, s) : this.isNode() ? (this.data = this.loaddata(), this.data[s] = t, this.writedata(), !0) : this.data && this.data[s] || null } initGotEnv(t) { this.got = this.got ? this.got : require("got"), this.cktough = this.cktough ? this.cktough : require("tough-cookie"), this.ckjar = this.ckjar ? this.ckjar : new this.cktough.CookieJar, t && (t.headers = t.headers ? t.headers : {}, void 0 === t.headers.Cookie && void 0 === t.cookieJar && (t.cookieJar = this.ckjar)) } get(t, s = (() => { })) { t.headers && (delete t.headers["Content-Type"], delete t.headers["Content-Length"]), this.isSurge() || this.isLoon() ? $httpClient.get(t, (t, e, i) => { !t && e && (e.body = i, e.statusCode = e.status), s(t, e, i) }) : this.isQuanX() ? $task.fetch(t).then(t => { const { statusCode: e, statusCode: i, headers: o, body: h } = t; s(null, { status: e, statusCode: i, headers: o, body: h }, h) }, t => s(t)) : this.isNode() && (this.initGotEnv(t), this.got(t).on("redirect", (t, s) => { try { const e = t.headers["set-cookie"].map(this.cktough.Cookie.parse).toString(); this.ckjar.setCookieSync(e, null), s.cookieJar = this.ckjar } catch (t) { this.logErr(t) } }).then(t => { const { statusCode: e, statusCode: i, headers: o, body: h } = t; s(null, { status: e, statusCode: i, headers: o, body: h }, h) }, t => s(t))) } post(t, s = (() => { })) { if (t.body && t.headers && !t.headers["Content-Type"] && (t.headers["Content-Type"] = "application/x-www-form-urlencoded"), delete t.headers["Content-Length"], this.isSurge() || this.isLoon()) $httpClient.post(t, (t, e, i) => { !t && e && (e.body = i, e.statusCode = e.status), s(t, e, i) }); else if (this.isQuanX()) t.method = "POST", $task.fetch(t).then(t => { const { statusCode: e, statusCode: i, headers: o, body: h } = t; s(null, { status: e, statusCode: i, headers: o, body: h }, h) }, t => s(t)); else if (this.isNode()) { this.initGotEnv(t); const { url: e, ...i } = t; this.got.post(e, i).then(t => { const { statusCode: e, statusCode: i, headers: o, body: h } = t; s(null, { status: e, statusCode: i, headers: o, body: h }, h) }, t => s(t)) } } time(t) { let s = { "M+": (new Date).getMonth() + 1, "d+": (new Date).getDate(), "H+": (new Date).getHours(), "m+": (new Date).getMinutes(), "s+": (new Date).getSeconds(), "q+": Math.floor(((new Date).getMonth() + 3) / 3), S: (new Date).getMilliseconds() }; /(y+)/.test(t) && (t = t.replace(RegExp.$1, ((new Date).getFullYear() + "").substr(4 - RegExp.$1.length))); for (let e in s) new RegExp("(" + e + ")").test(t) && (t = t.replace(RegExp.$1, 1 == RegExp.$1.length ? s[e] : ("00" + s[e]).substr(("" + s[e]).length))); return t } msg(s = t, e = "", i = "", o) { const h = t => !t || !this.isLoon() && this.isSurge() ? t : "string" == typeof t ? this.isLoon() ? t : this.isQuanX() ? { "open-url": t } : void 0 : "object" == typeof t && (t["open-url"] || t["media-url"]) ? this.isLoon() ? t["open-url"] : this.isQuanX() ? t : void 0 : void 0; $.isMute || (this.isSurge() || this.isLoon() ? $notification.post(s, e, i, h(o)) : this.isQuanX() && $notify(s, e, i, h(o))), this.logs.push("", "==============\ud83d\udce3\u7cfb\u7edf\u901a\u77e5\ud83d\udce3=============="), this.logs.push(s), e && this.logs.push(e), i && this.logs.push(i) } log(...t) { t.length > 0 ? this.logs = [...this.logs, ...t] : console.log(this.logs.join(this.logSeparator)) } logErr(t, s) { const e = !this.isSurge() && !this.isQuanX() && !this.isLoon(); e ? $.log("", `\u2757\ufe0f${this.name}, \u9519\u8bef!`, t.stack) : $.log("", `\u2757\ufe0f${this.name}, \u9519\u8bef!`, t) } wait(t) { return new Promise(s => setTimeout(s, t)) } done(t = {}) { const s = (new Date).getTime(), e = (s - this.startTime) / 1e3; this.log("", `\ud83d\udd14${this.name}, \u7ed3\u675f! \ud83d\udd5b ${e} \u79d2`), this.log(), (this.isSurge() || this.isQuanX() || this.isLoon()) && $done(t) } }(t, s) }
+if __name__ == "__main__":
+    main()
