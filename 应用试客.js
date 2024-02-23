@@ -1,12 +1,12 @@
 /*
 @肥皂 应用试客  每天一毛，八年老平台，胜在稳定吧。
-https://wx.shike.com/i/UUqhExC 下载链接，应该是只有安卓有这个任务吧？
+https://wx.shike.com/i/NTqldxk 下载链接，应该是只有安卓有这个任务吧？
 shike.com 抓包的域名。。
 抓一个cookie：od的值 
 格式 od=aaaaaaaaaa@od=bbbbbbbbbbbb
 变量 yyskapp   对应账号数据
 一天跑个五次吧。。
-cron:  5 1-23/4 * * * 
+cron:  5 1-23/4 * * *
 new Env('5-应用试客');
 项目名称：应用试客
 
