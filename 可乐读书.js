@@ -14,7 +14,7 @@
  * Author: Huansheng
 
  * 【提示】：如果进不去，运行下脚本，日志会输出最新入口，基本是那个可以进去
- * 入口 微信打开：http://11227302241358.bfqtbom.cn/r?upuid=112273
+ * 入口 微信打开：http://13473101192140.blwvfvr.cn/r?upuid=134731
 
  * 定制、偷撸、投稿 联系 QQ：1047827439
  * tg反馈群： https://t.me/huan_sheng 
