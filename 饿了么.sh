@@ -1,6 +1,7 @@
 #!/bin/bash
 # new Env('萝卜-饿了么');
 # 环境变量 elmck  值：SID=xxxx; cookie2=xxxx;   （按格式来）
+# cron "5 11,22 * * *
 #pwd
 
 eval "rm -rf ./ELM"
