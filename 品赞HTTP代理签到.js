@@ -1,7 +1,7 @@
 /**
  * 品赞HTTP代理签到v1.1
  * const $ = new Env("品赞HTTP代理签到");
- * cron 0 0 * * 0  品赞HTTP代理签到.js
+ * cron  0 22 * * 7 品赞HTTP代理签到.js
  * 注册地址：https://www.ipzan.com?pid=oviuk6128
  * 
  * ========= 青龙--配置文件 ===========
