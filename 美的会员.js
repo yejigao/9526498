@@ -1,5 +1,5 @@
 /**
- * cron 27 19 * * * 美的会员.js
+ * cron 27 22 * * * 美的会员.js
  * Show:每天运行一次
  * @author:https://github.com/smallfawn/QLScriptPublic
  * 变量名:wx_midea
