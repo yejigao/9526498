@@ -4,7 +4,7 @@ vx - 小程序: 心喜 - 辛选会员服务中心'
 export xx_sso='sso1#sso2'
 如需要删除所有帖子 请设置环境变量 xx_del_topic 为 1
 export xx_del_topic='1'
-cron: 15 5 * * *
+cron: 15 22 * * *
 '''
 
 import sys
