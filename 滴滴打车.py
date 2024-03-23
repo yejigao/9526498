@@ -1,595 +1,815 @@
-"""
-变量：
-ddgyToken: 必填，账号token，多账号换行或者@隔开，格式uid&token。uid可随便填，主要是方便区分账号用
+/**
+ * cron 20 8 * * * 
+ * Show:滴滴领券&果园 暂时每天一次
+ * 变量名:didi
+ * 注意:微信小程序和APP的token同样可用 搜不到关键词就搜token 
+ * 变量值:https://api.didi.cn  抓域名中  请求体*(body) city_id 中的 和请求头Headers中的Didi-Ticket 
+ * 注意 ut.xiaojukeji.com 请求体中的token和Didi-Ticket是一样的 都可以抓  找不到可以放大镜搜索
+ * 有BUG记得反馈 果园入口 微信打开 http://www.yuban.ltd/wx/?id=20240322215239111024747  
+ * 正确格式     Didi-Ticket  # city_id
+ * scriptVersionNow = "0.0.1";
+ */
 
-青龙：捉任意game.xiaojukeji.com的包，把body里的uid和token用&连起来填到变量ddgyToken
-uid其实不重要，只是用来区分token所属的账号，方便重写。手动捉包的话uid随便填都可以
-多账号换行或者@隔开，重写多账号直接换号捉就行
-列 ddgyToken='uid&token'
-
-打开http://jingweidu.757dy.com/
-获取经纬度填到环境变量 经度在前&维度
-列 didijw = '104.66967&37.23668'
-
-开启福利金低于500 自动抵扣打车费 默认开启
-关闭请填写变量didifl = false 或顺便填写除true外的一切字符
-
-export ddgyToken='uid&token'
-export didijw='经度&维度'
-export didifl='true'
-
-cron: 0 0,7,12,17,21 * * *
-const $ = new Env("滴滴打车");
-"""
-import requests
-import re
-import os
-import time
-
-
-all_print_list = []  # 用于记录所有 myprint 输出的字符串
-
-
-# 用于记录所有 print 输出的字符串,暂时实现 print 函数的sep和end
-def myprint(*args, sep=' ', end='\n', **kwargs):
-    global all_print_list
-    output = ""
-    # 构建输出字符串
-    for index, arg in enumerate(args):
-        if index == len(args) - 1:
-            output += str(arg)
-            continue
-        output += str(arg) + sep
-    output = output + end
-    all_print_list.append(output)
-    # 调用内置的 print 函数打印字符串
-    print(*args, sep=sep, end=end, **kwargs)
-
-
-# 发送通知消息
-def send_notification_message(title):
-    try:
-        from sendNotify import send
-
-        send(title, ''.join(all_print_list))
-    except Exception as e:
-        if e:
-            print('发送通知消息失败！')
-
-
-#初始化
-print('============📣初始化📣============')
-#版本
-banappversion = '1.2.2'
-try:
-    m = requests.get('https://gitee.com/guadu6464/test/raw/master/banbeng.json').json()
-    if banappversion == m['didi']:
-        print(f"无版本更新：{banappversion}")
-    else:
-        print('📣📣📣📣📣📣📣📣📣📣📣📣📣')
-        print(f"📣📣📣最新版本：{m['didi']}📣📣📣📣")
-        print('📣📣📣请更新版本：📣📣📣📣📣📣')
-        print('📣https://raw.githubusercontent.com/linbailo/zyqinglong/main/dddc.py📣')
-        print('📣📣📣📣📣📣📣📣📣📣📣📣📣')
-except Exception as e:
-    print('无法检查版本更新')
-
-appversion = '6.6.20'
-print(f'小程序版本：{appversion}')
-if 'didijw' in os.environ:
-    lng,lat = os.environ.get("didijw").split("&")
-    print('已经填写经纬度')
-else:
-    print('使用内置经纬度')
-    lat = '39.852399823026097'  #纬度
-    lng = '116.32055410011579'   #经度
-print(f'经纬度默认设置：{lat},{lng}')
-
-if 'didifl' in os.environ:
-    if os.environ.get("didifl") == 'true':
-        didifl = 'true'
-        print('获取到青龙变量\n福利金抵扣： 已开启')
-    elif os.environ.get("didifl") == True:
-        didifl = 'true'
-        print('获取到青龙变量\n福利金抵扣： 已开启')
-    else:
-        didifl = 'false'
-        print('获取到青龙变量\n福利金抵扣： 已关闭')
-else:
-    didifl = 'true'
-    print('未设置青龙变量\n福利金抵扣： 默认开启')
-
-        
-print('==================================')
-try:
-    print(m['didigg'])
-except Exception as e:
-    print('获取公告失败')
-
-
-print('==================================')
-#设置api
-fuli ='https://ut.xiaojukeji.com/ut/welfare/api/action/dailySign'
-youhui = 'https://union.didi.cn/api/v1.0/reward/receive'
-guafen1 = 'https://ut.xiaojukeji.com/ut/welfare/api/home/divideData'
-guafen2 = 'https://ut.xiaojukeji.com/ut/welfare/api/action/joinDivide'
-guafen3 = 'https://ut.xiaojukeji.com/ut/welfare/api/action/event/report'
-ttfuli = 'https://ut.xiaojukeji.com/ut/janitor/api/home/sign/index'
-ttfuli1 = 'https://ut.xiaojukeji.com/ut/janitor/api/action/sign/do'
-yao = 'https://api.didi.cn/webx/chapter/product/init'
-#查询未领取福利金
-fulijingchax = 'https://ut.xiaojukeji.com/ut/welfare/api/home/getBubble'
-#接上面领取
-liqu = 'https://ut.xiaojukeji.com/ut/welfare/api/action/clickBubble'
-#养券大师
-#判断过期
-yanquan1 = 'https://game.xiaojukeji.com/api/game/coaster/expireConfirm'
-#签到
-yanquan2 = 'https://game.xiaojukeji.com/api/game/coaster/sign'
-#任务
-yanquan3 = 'https://game.xiaojukeji.com/api/game/mission/get?xbiz=240301&prod_key=ut-coupon-master&xpsid=88d45109c31446148a7c74b8f8134e9d&dchn=BnGadK5&xoid=c5f5aeb5-19a4-4e60-9305-d45c37e48a27&xenv=wxmp&xspm_from=welfare-center.none.c1324.none&xpsid_root=660616ee6da44f2a83c6bad2b2e08f50&xpsid_from=42309777210645b393e252f4056e37ff&xpsid_share=&game_id=30&platform=1&token='
-#做任务
-yanquan4 = 'https://game.xiaojukeji.com/api/game/mission/update'
-#领取
-yanquan5 = 'https://game.xiaojukeji.com/api/game/mission/award'
-#抽奖
-yanquan6 = 'https://game.xiaojukeji.com/api/game/coaster/draw'
-#升级轮盘
-yanquan7 = 'https://game.xiaojukeji.com/api/game/coaster/wheelUpgrade'
-#详细
-yanquan8 = 'https://game.xiaojukeji.com/api/game/coaster/hall'
-#学生优惠
-xuesyhui1 = 'https://ut.xiaojukeji.com/ut/active_brick/api/v1/wyc/identity/index'
-xuesyhui2 = 'https://ut.xiaojukeji.com/ut/active_brick/api/v1/wyc/identity/award/user_do_group_all'
-
-
-
-
-
-def main(uid,token):
-    myprint(f'正在执行账号：{uid}')
-    chaxun(uid,token)
-    try:
-        if didifl == 'true':
-            bdfulijing(uid,token)
-    except Exception as e:
-        raise e
-    try:
-        diyi(uid,token)
-    except Exception as e:
-        print(e)
-    guafen(uid,token)
-    
-
-def diyi(uid,token):
-    myprint('--------领取优惠券--------')
-    yq(uid,token)
-    #data = {"lang":"zh-CN","token":token,"access_key_id":9,"appversion":appversion,"channel":1100000009,"_ds":"","xpsid":"d04ccc4ce0c844e38c164ecc30711458","xpsid_root":"d04ccc4ce0c844e38c164ecc30711458","dsi":"877e066d7ce22ef07762fa42992227567393hvn1","source_id":"31806556232355840DT124787708487929856DT","product_type":"didi","city_id":33,"lng":"","lat":"","source_.from":"","env":{"dchn":"r2mda3z","newTicket":token,"latitude":"","longitude":"","model":"2201122C","fromChannel":"2","newAppid":"35009","openId":"","openIdType":"1","sceneId":"1037","isHitButton":True,"isOpenWeb":False,"timeCost":19908,"cityId":"33","xAxes":"167.60003662109375","yAxes":"480.0857849121094"},"req_env":"wx","dunion_callback":""}
-    data = {"xbiz":"240101","prod_key":"ut-dunion-wyc","xpsid":"6dc1173059e04e57ab5c51689827af8c","dchn":"Qm0wKR1","xoid":"c5f5aeb5-19a4-4e60-9305-d45c37e48a27","xenv":"wxmp","xspm_from":"none.none.none.none","xpsid_root":"6dc1173059e04e57ab5c51689827af8c","xpsid_from":"","xpsid_share":"","env":{"dchn":"Qm0wKR1","newTicket":token,"cityId":"33","userAgent":"","fromChannel":"2","newAppid":"30012","openId":"","openIdType":"1","isHitButton":False,"isOpenWeb":True,"timeCost":4667},"req_env":"wx","dsi":"e674ac10376e717aeac76c7510243b76410u18sh","source_id":"4a871f6eb9e4ee5568f0","product_type":"didi","lng":"","lat":"","token":token,"uid":"","phone":"","city_id":33,"source_from":""}
-    tijiao = requests.post(url=youhui, json=data).json()
-    if tijiao['errmsg'] == 'success':
-        for yh in tijiao['data']['rewards']:
-            myprint(f"获取到{yh['coupon']['max_benefit_capacity']['value']}{yh['coupon']['max_benefit_capacity']['unit']} {yh['coupon']['name']} {yh['coupon']['remark']}")
-    else:
-        print(tijiao['errmsg'])
-    try:
-        didiyouc(uid,token)
-    except Exception as e:
-        print('小错误')
-    
-    try:
-        didiqc(uid,token)
-    except Exception as e:
-        print('小错误')
-
-    try:
-        yanquan(uid,token)
-    except Exception as e:
-        print('小错误')
-
-    try:
-        xuesyhui(uid,token)
-    except Exception as e:
-        print('小错误')
-
-    myprint('--------福利中心签到------')
-    data = {
-    'lang' : 'zh-CN',
-    'token' : token,
-    'access_key_id' : 9,
-    'appversion' : appversion,
-    'channel' : 1100000002,
-    '_ds' : '',
-    'lat' : lat,
-    'lng' : lng,
-    'platform' : 'mp',
-    'env' : r'{\"cityId\":\"33\",\"token\":\"\",\"longitude\":\"\",\"latitude\":\"\",\"appid\":\"30012\",\"fromChannel\":\"2\",\"wxScene\":1089,\"sceneId\":1089,\"openId\":\"\"}',
-    'dchn' : 'W0dzOxO'
+const $ = new Env("滴滴领券&果园");
+const notify = $.isNode() ? require('./sendNotify') : '';
+let ckName = "didi";
+let envSplitor = ["&", "\n"]; //多账号分隔符
+let strSplitor = "#"; //多变量分隔符
+let userIdx = 0;
+let userList = [];
+class Task {
+    constructor(str) {
+        this.index = ++userIdx;
+        this.ck = str.split(strSplitor)[0]; //单账号多变量分隔符
+        this.ckStatus = true;
+        this.couponsBindList = []
+        this.waterNum = 0;
+        this.city_id = Number(str.split(strSplitor)[1]);
     }
-    #myprint(data)
-    tijiao = requests.post(url=fuli, json=data).json()
-    if tijiao['errmsg'] == 'success':
-        myprint(f"签到成功：获得 {tijiao['data']['subsidy_state']['subsidy_amount']} 福利金")
-    else:
-        myprint(tijiao['errmsg'])
-        
-    try:
-        fuliwei(uid,token)
-    except Exception as e:
-        print('小错误')
-    myprint('--------天天领券签到------')
-    headers = {'didi-ticket': token,'content-type':'application/json'}
-    data = {
-    'lang' : 'zh-CN',
-    'token' : token,
-    'access_key_id' : 9,
-    'appversion' : appversion,
-    'channel' : 1100000002,
-    '_ds' : '',
-    'xpsid': '',
-    'xpsid_root': '',
-    'city_id': 33,
-    'env': {'isHitButton': True,'newAppid': 35009,'userAgent': '','openId': '','model': '2201122C','wifi': 2,'timeCost': 222318}
+    async main() {
+        await this.productInit();
+        await this.sign_do()
+        await this.doLottery()
+        for (let i of this.couponsBindList) {
+            await this.coupon_bind(i.activity_id, i.group_id, i.coupon_conf_id)
+        }
+        await this.do_group()
+        await this.mission_get()
+        await this.plant_sign()
+        await this.plant_newEnter()
+        if (this.waterNum > 10) {
+            for (let i = 0; i < (this.waterNum / 10); i++) {
+                await this.plant_newWatering()
+
+            }
+        }
     }
-    #myprint(data)
-    tijiao = requests.post(url=ttfuli, json=data, headers=headers).json()
-    if tijiao['errmsg'] == 'success':
-        myprint(f"获取id成功：{tijiao['data']['activity_id']}，{tijiao['data']['instance_id']}")
-    else:
-        myprint(tijiao['errmsg'])
-    
-    #myprint(tijiao)
-    data = {
-    'lang' : 'zh-CN',
-    'token' : token,
-    'access_key_id' : 9,
-    'appversion' : appversion,
-    'channel' : 1100000002,
-    '_ds' : '',
-    'xpsid': '0b3283547ec94f74ab4c8bdfbe61594a',
-    'xpsid_root': 'a14839465b384932b8b548e19c9f6737',
-    'activity_id': tijiao['data']['activity_id'],
-    'instance_id': tijiao['data']['instance_id'],
-    'city_id': 33,
-    'env': {'isHitButton': True,'newAppid': 35009,'userAgent': '','openId': '','model': '2201122C','wifi': 2}
+    async taskRequest(method, url, body = "") {
+        //
+        let headers = {
+            'Content-Type': 'application/json',
+            'Didi-Ticket': this.ck,
+        }
+        const reqeuestOptions = {
+            url: url,
+            method: method,
+            headers: headers,
+        }
+        body == "" ? "" : Object.assign(reqeuestOptions, { body: body })
+        let { body: result } = await $.httpRequest(reqeuestOptions)
+        return result
     }
-    #myprint(data)
-    tijiao = requests.post(url=ttfuli1, json=data, headers=headers).json()
-    if tijiao['errmsg'] == 'success':
-        myprint(f"天天领券签到：{tijiao['errmsg']}")
-    else:
-        myprint(tijiao['errmsg'])
-        
-   #天天领券限时抢
-    myprint('----领点券使使----')
-    data = {"lang":"zh-CN","access_key_id":9,"appversion":appversion,"channel":1100000002,"_ds":"","xpsid":"28a361bf9f2e456f9867be3cad4877e4","xpsid_root":"0fa1ac9f38d24e43a4a2616319942c88","root_xpsid":"0fa1ac9f38d24e43a4a2616319942c88","f_xpsid":"41345c97bc744b27a30c0dda8fbdfcba","xbiz":"240000","prod_key":"ut-coupon-center","dchn":"wE7poOA","xoid":"26243a0a-b1b9-44d3-b2ed-046016031b38","xenv":"wxmp","xpsid_from":"2e5ded46d7114ac4b0cf490619f5592d","xpsid_share":"","xspm_from":"ut-aggre-homepage.none.c460.none","xpos_from":{"pk":"ut-aggre-homepage"},"args":[{"dchn":"kkXgpzO","prod_key":"ut-limited-seckill","runtime_args":{"token":token,"lat":lat,"lng":lng,"env":{"dchn":"wE7poOA","newTicket":token,"model":"2201122C","fromChannel":"2","newAppid":"35009","openId":"","openIdType":"1","sceneId":"1089","isHitButton":False,"isOpenWeb":False,"timeCost":70665,"latitude":lat,"longitude":lng,"cityId":"","fromPage":"ut-coupon-center/views/index/index","xAxes":"","yAxes":""},"content-type":"application/json","Didi-Ticket":token,"ptf":"mp","city_id":33,"platform":"mp","x_test_user":{"key":281475120025923}}},{"dchn":"gL3E8qZ","prod_key":"ut-support-coupon","runtime_args":{"token":token,"lat":lat,"lng":lng,"env":{"dchn":"wE7poOA","newTicket":token,"model":"2201122C","fromChannel":"2","newAppid":"35009","openId":"","openIdType":"1","sceneId":"1089","isHitButton":False,"isOpenWeb":False,"timeCost":70666,"latitude":lat,"longitude":lng,"cityId":"","fromPage":"ut-coupon-center/views/index/index","xAxes":"","yAxes":""},"content-type":"application/json","Didi-Ticket":token,"ptf":"mp","city_id":33,"platform":"mp","x_test_user":{"key": 281475120025923}}}]}
-    tijiao = requests.post(url="https://api.didi.cn/webx/chapter/page/batch/config", json=data, headers=headers).json()
-    if tijiao['errmsg'] == 'success':
-        for xuju in tijiao['data']['conf'][0]['strategy_data']['data']['seckill']:
-            for xu in xuju['coupons']:
-                activity_id = xu['activity_id']
-                group_id = xu['group_id']
-                group_date = xu['group_date']
-                coupon_conf_id = xu['coupon_conf_id']
-                data = {"lang":"zh-CN","token":token,"access_key_id":9,"appversion":appversion,"channel":1100000002,"_ds":"","xpsid":"d51af08a62ef4b43b1eb41deaae30379","xpsid_root":"0fa1ac9f38d24e43a4a2616319942c88","activity_id":activity_id,"group_id":group_id,"group_date":group_date,"coupon_conf_id":coupon_conf_id,"dchn":"wE7poOA","platform":"mp","city_id":33,"env":{"isHitButton":True,"newAppid":35009,"userAgent":"","openId":"","model":"2201122C","wifi":2,"timeCost":""}}
-                ju = requests.post(url="https://ut.xiaojukeji.com/ut/janitor/api/action/coupon/bind", json=data, headers=headers).json()
-                myprint(f"{xu['name']}（{xu['threshold_desc']}）：{ju['errmsg']}")
-                time.sleep(1)
-    myprint('------------------')
-    
-def guafen(uid,token):
-    myprint('--------瓜瓜乐打卡--------')
-    headers = {'didi-ticket': token,'content-type':'application/json'}
-    """
-    #没用的
-    data = {
-    'lang' : 'zh-CN',
-    'token' : token,
-    'access_key_id' : 9,
-    'appversion' : appversion,
-    'channel' : 1100000002,
-    '_ds' : '',
-    'lat' : lat,
-    'lng' : lng,
-    'platform' : 'mp',
-    'env' : r'{\"cityId\":\"33\",\"token\":\"\",\"longitude\":\"\",\"latitude\":\"\",\"appid\":\"30012\",\"fromChannel\":\"2\",\"wxScene\":1089,\"sceneId\":1089,\"openId\":\"\"}',
-    'type': 'navigation_click',
-    'data': {'navigation_type': 'divide'}
+
+    async productInit() {
+        try {
+            let result = await this.taskRequest("post", `https://api.didi.cn/webx/v3/productInit`, JSON.stringify({
+                "city_id": this.city_id,
+                "dchn": "YYPDp7e",
+                "args": {
+                    "runtime_args": {
+                        "Didi-Ticket": this.ck,
+                    }
+                },
+            }))
+            if (result.errno == 0) {
+                //
+                $.log(`✅账号[${this.index}]-初始化活动信息成功🎉`)
+                let tmpArr = result.data.conf.strategy_data.daily_info.daily_coupon.coupons
+                let tmpArr2 = result.data.conf.strategy_data.sec_kill_info.seckill
+                // $.log(`本次共可领取[${tmpArr.length}]张每日精选券`)
+                for (let i of tmpArr2) {
+                    if (i.status == 3) {
+                        //过去
+                    } else if (i.status == 1) {
+                        //当前
+                        for (let j of i.coupons) {
+                            //console.log(j)
+                            if (j.status == 1) {
+                                //console.log(j)
+                                this.couponsBindList.push({ activity_id: j.activity_id, group_id: j.group_id, coupon_conf_id: j.coupon_conf_id })
+                            }
+                        }
+                    } else if (i.status == 2) {
+                        //将来
+                    }
+                }
+                for (let i of tmpArr) {
+                    if (i.status == 1) {
+                        //console.log(i)
+                        this.couponsBindList.push({ activity_id: i.activity_id, group_id: i.group_id, coupon_conf_id: i.coupon_conf_id })
+                    }
+                }
+            } else {
+
+            }
+        } catch (e) {
+            console.log(e);
+        }
     }
-    tijiao = requests.post(url=guafen3, json=data,headers=headers).json()
-    """
-    #获取数据
-    data = {
-    'lang' : 'zh-CN',
-    'token' : token,
-    'access_key_id' : 9,
-    'appversion' : appversion,
-    'channel' : 1100000002,
-    '_ds' : '',
-    'lat' : lat,
-    'lng' : lng,
-    'platform' : 'mp',
-    'env' : r'{\"cityId\":\"33\",\"token\":\"\",\"longitude\":\"\",\"latitude\":\"\",\"appid\":\"30012\",\"fromChannel\":\"2\",\"wxScene\":1089,\"sceneId\":1089,\"openId\":\"\"}'
+    async doLottery() {
+        try {
+            let result = await this.taskRequest("post", `https://ut.xiaojukeji.com/ut/janitor/api/action/lottery/doLottery`, JSON.stringify({
+                "act_id": "217533998314",
+                "city_id": this.city_id
+            }))
+            //console.log(options);
+            //console.log(JSON.stringify(result));
+            if (result.errno == 0) {
+                //console.log(`✅账号[${this.index}]  欢迎用户: ${result.errcode}🎉`);
+                $.log(`✅账号[${this.index}]-抽奖成功-[${result.data.prize_data[0].name}]🎉`)
+            } else {
+                $.log(`❌账号[${this.index}]-抽奖失败-[${result.errmsg}]`);
+                //console.log(result);
+            }
+        } catch (e) {
+            console.log(e);
+        }
     }
-    shuju = requests.post(url=guafen1, json=data).json()
-    #myprint(shuju)
-    rqi = list(shuju['data']['divide_data']['divide'])
-    zs = len(rqi) - 1
-    activity_id = shuju['data']['divide_data']['divide'][rqi[zs]]['activity_id']
-    task_id = shuju['data']['divide_data']['divide'][rqi[zs]]['task_id']
-    myprint(f'获取到日期数据：{rqi}\n需要的日期：{rqi[zs]}\n报名瓜分activity_id数据：{activity_id}')
-    #报名瓜分
-    data = {
-    'lang' : 'zh-CN',
-    'token' : token,
-    'access_key_id' : 9,
-    'appversion' : appversion,
-    'channel' : 1100000002,
-    '_ds' : '',
-    'lat' : lat,
-    'lng' : lng,
-    'platform' : 'mp',
-    'env' : r'{\"cityId\":\"33\",\"token\":\"\",\"longitude\":\"\",\"latitude\":\"\",\"appid\":\"30012\",\"fromChannel\":\"2\",\"wxScene\":1089,\"sceneId\":1089,\"openId\":\"\"}',
-    'activity_id' : activity_id,
-    'count' : 1,
-    'type' : 'ut_bonus'
+
+
+    async coupon_bind(activity_id, group_id, coupon_conf_id) {
+        try {
+            let result = await this.taskRequest("post", `https://ut.xiaojukeji.com/ut/janitor/api/action/coupon/bind`, JSON.stringify({
+                "activity_id": activity_id,
+                "group_id": group_id,
+                "coupon_conf_id": coupon_conf_id,
+                "city_id": this.city_id
+            }))
+            //console.log(options);
+            //console.log(result);
+            if (result.errno == 0) {
+                $.log(`✅账号[${this.index}]-领券成功-[${result.data.name}]🎉`)
+            } else {
+                $.log(`❌账号[${this.index}]-领券失败-[${result.errmsg}]`);
+                //console.log(result);
+            }
+        } catch (e) {
+            console.log(e);
+        }
     }
-    tijiao = requests.post(url=guafen2, json=data).json()
-    if tijiao['errmsg'] == 'success':
-        myprint(f"报名瓜分：{tijiao['errmsg']}")
-    else:
-        myprint(tijiao['errmsg'])
-    #参加瓜分
-    
-    activity_id = shuju['data']['divide_data']['divide'][rqi[0]]['activity_id']
-    task_id = shuju['data']['divide_data']['divide'][rqi[0]]['task_id']
-    myprint(f'获取到日期数据：{rqi}\n需要的日期：{rqi[0]}\n参加瓜分activity_id数据：{activity_id}')
-    data = {
-    'lang' : 'zh-CN',
-    'token' : token,
-    'access_key_id' : 9,
-    'appversion' : appversion,
-    'channel' : 1100000002,
-    '_ds' : '',
-    'lat' : lat,
-    'lng' : lng,
-    'platform' : 'mp',
-    'env' : r'{\"cityId\":\"33\",\"token\":\"\",\"longitude\":\"\",\"latitude\":\"\",\"appid\":\"30012\",\"fromChannel\":\"2\",\"wxScene\":1089,\"sceneId\":1089,\"openId\":\"\"}',
-    'activity_id' : activity_id,
-    'task_id' : task_id
+
+    async do_group() {
+        try {
+            let body = {
+                "prod_key": "integrated-marketing-award",
+                "token": this.ck,
+                "xak": "integrated-marketing-award-D5LYBz4SGgg4",
+                "city_id": this.city_id
+            }
+            let result = await this.taskRequest("post", `https://ut.xiaojukeji.com/ut/active_brick/api/v1/award/do_group?wsgsig=${this.get_wsgsig(body)}`, JSON.stringify(body))
+            //console.log(options);
+            //console.log(result);
+            if (result.errno == 0) {
+                let awardArr = []
+                for (let i of result.data.details) {
+                    for (let j of i.rewards) {
+                        awardArr.push(j.info[0].coupon_name)
+                    }
+                }
+                $.log(`✅账号[${this.index}]-领券成功-[${awardArr}]🎉`)
+            } else {
+                $.log(`❌账号[${this.index}]-领券失败-[${result.errmsg}]`);
+                //console.log(result);
+            }
+        } catch (e) {
+            $.log(`❌账号[${this.index}]-领券失败-[501报错 - 测试版]`);
+        }
     }
-    tijiao = requests.post(url='https://ut.xiaojukeji.com/ut/welfare/api/action/divideReward', json=data).json()
-    if tijiao['errmsg'] == 'success':
-        myprint(f"参加瓜分：{tijiao['errmsg']}")
-    else:
-        myprint(tijiao['errmsg'])
-    #myprint(tijiao)
-    #获取数据
-    data = {
-    'lang' : 'zh-CN',
-    'token' : token,
-    'access_key_id' : 9,
-    'appversion' : appversion,
-    'channel' : 1100000002,
-    '_ds' : '',
-    'lat' : lat,
-    'lng' : lng,
-    'platform' : 'mp',
-    'env' : r'{\"cityId\":\"33\",\"token\":\"\",\"longitude\":\"\",\"latitude\":\"\",\"appid\":\"30012\",\"fromChannel\":\"2\",\"wxScene\":1089,\"sceneId\":1089,\"openId\":\"\"}'
+    async sign_do() {
+        try {
+            let result = await this.taskRequest("post", `https://ut.xiaojukeji.com/ut/janitor/api/action/sign/do`, JSON.stringify({
+                //"activity_id": "217534045313",
+            }))
+            //console.log(options);
+            //console.log(result);
+            if (result.errno == 0) {
+                //console.log(`✅账号[${this.index}]  欢迎用户: ${result.errcode}🎉`);
+                $.log(`✅账号[${this.index}]-签到成功-[]🎉`)
+
+            } else {
+                $.log(`❌账号[${this.index}]-签到失败-[${result.errmsg}]`);
+                //console.log(result);
+            }
+        } catch (e) {
+            console.log(e);
+        }
     }
-    shuju = requests.post(url=guafen1, json=data).json()
-    #myprint(shuju)
-    myprint('------')
-    if '14点自动开奖' == shuju['data']['divide_data']['divide'][rqi[0]]['button']['text']:
-        myprint(f"参加今日瓜分状态：成功-{shuju['data']['divide_data']['divide'][rqi[0]]['button']['text']}")
-    elif '发奖了' == shuju['data']['divide_data']['divide'][rqi[0]]['button']['text']:
-        myprint(f"参加今日瓜分状态：成功-{shuju['data']['divide_data']['divide'][rqi[0]]['button']['text']}")
-    else:
-        myprint(f"参加今日瓜分状态：失败")
-
-    if '明天14点前访问' == shuju['data']['divide_data']['divide'][rqi[zs]]['button']['text']:
-        myprint(f"参加今日瓜分状态：成功-{shuju['data']['divide_data']['divide'][rqi[zs]]['button']['text']}")
-    else:
-        myprint(f"参加明日瓜分状态：失败")
-    myprint('------')
-    
-    
-def chaxun(uid,token):
-    myprint('--------福利金查询--------')
-    cx = requests.get(url=f'https://rewards.xiaojukeji.com/loyalty_credit/bonus/getWelfareUsage4Wallet?token={token}&city_id=0').json()
-    if '成功' == cx['errmsg']:
-        myprint(f"账号{uid}现在有福利金：{cx['data']['worth']}（可抵扣{cx['data']['worth']/100}元）\n{cx['data']['recent_expire_time']}过期福利金：{cx['data']['recent_expire_amount']}")
-    else:
-        myprint('查询失败')
-
-def fuliwei(uid,token):
-    myprint('--------福利中心未领取查询------')
-    data = {
-    'xbiz' : 240000,
-    'prod_key': 'welfare-center',
-    'xpsid':'8eff1f6aa77a4f278d037f07f3634b35',
-    'dchn' : 'QXeobao',
-    'xoid':'4H3h1CefQlCEYWkpT4dzmg',
-    'xenv' : 'passenger',
-    'xpsid_root' : '73f433de772c402cc346621b3b5f86c5',
-    'xpsid_from':'',
-    'xpsid_share':'',
-    'token' : token,
-    'access_key_id' : 9,
-    'lat' : lat,
-    'lng' : lng,
-    'platform' : 'na',
-    'env' : r'{\"cityId\":\"33\",\"token\":\"\",\"longitude\":\"\",\"latitude\":\"\",\"appid\":\"30004\",\"fromChannel\":\"1\",\"deviceId\":\"\",\"ddfp\":\"\",\"appVersion\":\"6.7.4\",\"userAgent\":\"Mozilla/5.0 (Linux; Android 14; 2201122C Build/UKQ1.230804.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/117.0.0.0 Mobile Safari/537.36 didi.passenger/6.7.4 FusionKit/2.0.0  OffMode/0\"}'
+    async plant_newEnter() {
+        let body = {
+            platform: 1,
+            token:
+                this.ck
+        };
+        try {
+            let result = await this.taskRequest("post", `https://game.xiaojukeji.com/api/game/plant/newEnter?wsgsig=${this.get_wsgsig(body)}`, JSON.stringify(body))
+            //console.log(options);
+            //console.log(result);
+            if (result.errno == 0) {
+                $.log(`✅账号[${this.index}]-果园信息获取成功-[${result.data.tree_info.pack_water}💧 ${result.data.tree_info.tree_progress}%]🎉`)
+                this.waterNum = Number(result.data.tree_info.pack_water);
+            } else {
+                $.log(`❌账号[${this.index}]-果园信息获取失败-[${result.errmsg}]`);
+                //console.log(result);
+            }
+        } catch (e) {
+            console.log(e);
+        }
     }
-    #myprint(data)
-    tijiao = requests.post(url=fulijingchax, json=data).json()
-    myprint(f"存在{len(tijiao['data']['bubble_list'])}个未领取")
-    if len(tijiao['data']['bubble_list']) > 0:
-        myprint('进行领取')
-        for lin in tijiao['data']['bubble_list']:
-            data = {
-            'xbiz' : 240000,
-            'prod_key': 'welfare-center',
-            'xpsid':'8eff1f6aa77a4f278d037f07f3634b35',
-            'dchn' : 'QXeobao',
-            'xoid':'4H3h1CefQlCEYWkpT4dzmg',
-            'xenv' : 'passenger',
-            'xpsid_root' : '73f433de772c402cc346621b3b5f86c5',
-            'xpsid_from':'',
-            'xpsid_share':'',
-            'token' : token,
-            'lat' : lat,
-            'lng' : lng,
-            'platform' : 'na',
-            'env' : r'{\"cityId\":\"33\",\"token\":\"\",\"longitude\":\"\",\"latitude\":\"\",\"appid\":\"30004\",\"fromChannel\":\"1\",\"deviceId\":\"\",\"ddfp\":\"\",\"appVersion\":\"6.7.4\",\"userAgent\":\"Mozilla/5.0 (Linux; Android 14; 2201122C Build/UKQ1.230804.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/117.0.0.0 Mobile Safari/537.36 didi.passenger/6.7.4 FusionKit/2.0.0  OffMode/0\"}',
-            'cycle_id' : lin['cycle_id'],
-            'bubble_type' : 'yangliu_sign'}
-            tijiao1 = requests.post(url=liqu, json=data).json()
-            if tijiao1['errmsg'] == 'success':
-                myprint(f"领取{tijiao1['errmsg']}")
-            else:
-                myprint('领取失败')
+    async mission_award(mission_id) {
+        let body = {
+            mission_id: mission_id,
+            game_id: 23,
+            platform: 1,
+            token:
+                this.ck,
+        }
+        try {
+            let result = await this.taskRequest("post", `https://game.xiaojukeji.com/api/game/mission/award?wsgsig=${this.get_wsgsig(body)}`, JSON.stringify(body))
+            //console.log(options);
+            //console.log(result);
+            if (result.errno == 0) {
+                $.log(`✅账号[${this.index}]-领取果园奖励成功-[${result.data.reward[0].count}/${result.data.reward[0].name}]🎉`)
+
+            } else {
+                $.log(`❌账号[${this.index}]-领取果园奖励失败-[${result.errmsg}]`);
+                //console.log(result);
+            }
+        } catch (e) {
+            console.log(e);
+        }
+    }
+    async mission_get() {
+        try {
+            let result = await this.taskRequest("get", `https://game.xiaojukeji.com/api/game/mission/get?game_id=23&token=${this.ck}`)
+            //console.log(options);
+            //console.log(result);
+            if (result.errno == 0) {
+                for (let i of result.data.missions) {
+                    if (i.type == 1) {
+                        if (i.status == 0 && i.target == 1) {
+                            await this.mission_update(i.id)
+                        }
+                        if (i.status == 2) {
+                            await this.mission_award(i.id)
+                        }
+                    } else if (i.type == 2) {
+
+                    } else if (i.type == 5) {
+                        await this.mission_subscribe(i.id)
+                    }
 
 
-def didiyouc(uid,token):
-    myprint('--------领取代驾、洗车优惠券--------')
-    data = {"lang":"zh-CN","token":token,"access_key_id":9,"appversion":appversion,"channel":1100000009,"_ds":"","xpsid":"d590d5aec0884e1e8b56ee04b1b3122e","xpsid_root":"d590d5aec0884e1e8b56ee04b1b3122e","dsi":"80dda490be5cfc6506bf4cbf7b01aa36410odlfg","source_id":"b08d62bd22133278c810","product_type":"didi","dchn":"DZdQqlE","city_id":33,"lng":lng,"lat":lat,"env":{"dchn":"DZdQqlE","newTicket":token,"latitude":lat,"longitude":lng,"model":"2201122C","fromChannel":"2","newAppid":"35009","openId":"","openIdType":"1","sceneId":"1037","isHitButton":True,"isOpenWeb":False,"timeCost":6851,"cityId":"33","xAxes":"275.02850341796875","yAxes":"387.0284729003906"},"req_env":"wx","dunion_callback":""}
-    tijiao = requests.post(url=youhui, json=data).json()
-    if tijiao['errmsg'] == 'success':
-        for yh in tijiao['data']['rewards']:
-            myprint(f"获取到{yh['coupon']['max_benefit_capacity']['value']}{yh['coupon']['max_benefit_capacity']['unit']} {yh['coupon']['name']} {yh['coupon']['remark']}")
-    else:
-        myprint(tijiao['errmsg'])
-    myprint('--------------')
-    data = {"xbiz":"240101","prod_key":"ut-dunion-dj","xpsid":"8c6b4325867d42198a2fe78c5b037475","dchn":"aqj1Xk5","xoid":"c5f5aeb5-19a4-4e60-9305-d45c37e48a27","xenv":"wxmp","xspm_from":"none.none.none.none","xpsid_root":"8c6b4325867d42198a2fe78c5b037475","xpsid_from":"","xpsid_share":"","dsi":"622554f9d87e57040413526a116ac629410nk8lu","source_id":"b08d62bd22133278c810","product_type":"didi","token":token,"city_id":33,"env":{"dchn":"aqj1Xk5","newTicket":token,"userAgent":"","fromChannel":"2","newAppid":"30012","openId":"","openIdType":"1","isHitButton":True,"isOpenWeb":True,"timeCost":13722,"cityId":"33","xAxes":"260.6571044921875","yAxes":"455.3142395019531"},"req_env":"wx","dunion_callback":""}
-    tijiao = requests.post(url=youhui, json=data).json()
-    if tijiao['errmsg'] == 'success':
-        for yh in tijiao['data']['rewards']:
-            myprint(f"获取到{yh['coupon']['max_benefit_capacity']['value']}{yh['coupon']['max_benefit_capacity']['unit']} {yh['coupon']['name']} {yh['coupon']['remark']}")
-    else:
-        myprint(tijiao['errmsg'])
+                }
+
+            } else {
+                $.log(`❌账号[${this.index}]-果园初始化失败-[${result.errmsg}]`);
+                //console.log(result);
+            }
+        } catch (e) {
+            console.log(e);
+        }
+    }
+    async mission_update(mission_id) {
+        let body = {
+            mission_id: mission_id,
+            game_id: 23,
+            platform: 1,
+            token:
+                this.ck,
+        }
+        try {
+            let result = await this.taskRequest("post", `https://game.xiaojukeji.com/api/game/mission/update?wsgsig=${this.get_wsgsig(body)}`, JSON.stringify(body))
+            //console.log(options);
+            //console.log(result);
+            if (result.errno == 0) {
+                $.log(`✅账号[${this.index}]-上传任务状态成功-[${result.errmsg}]🎉`)
+                await this.mission_award(mission_id)
+            } else {
+                $.log(`❌账号[${this.index}]-上传任务状态失败-[${result.errmsg, mission_id}] `);
+                //console.log(result);
+            }
+        } catch (e) {
+            console.log(e);
+        }
+    }
+    async mission_subscribe(id) {
+        let body = {
+            status: true,
+            game_id: 23,
+            token:
+                this.ck,
+        };
+        try {
+            let result = await this.taskRequest("post", `https://game.xiaojukeji.com/api/game/subscribe?wsgsig=${this.get_wsgsig(body)}`, JSON.stringify(body))
+            //console.log(options);
+            //console.log(result);
+            if (result.errno == 0) {
+                $.log(`✅账号[${this.index}]-上传任务状态成功-[${result.errmsg}]🎉`)
+                await this.mission_award(id)
+            } else {
+                $.log(`❌账号[${this.index}]-上传任务状态失败-[${result.errmsg, mission_id}] `);
+                //console.log(result);
+            }
+        } catch (e) {
+            console.log(e);
+        }
+    }
+
+    async plant_sign() {
+        try {
+            let body = {
+                token:
+                    this.ck,
+            }
+            let result = await this.taskRequest("post", `https://game.xiaojukeji.com/api/game/plant/sign?wsgsig=${this.get_wsgsig(body)}`, JSON.stringify(body))
+            // console.log("post", `https://game.xiaojukeji.com/api/game/plant/sign?wsgsig=${this.get_wsgsig(body)}`, JSON.stringify(body));
+            //console.log(result);
+            if (result.errno == 0) {
+                $.log(`✅账号[${this.index}]-果园签到成功-[${result.errmsg}]🎉`)
+
+            } else {
+                $.log(`❌账号[${this.index}]-果园签到失败-[${result.errmsg}]`);
+                //console.log(result);
+            }
+        } catch (e) {
+            console.log(e);
+        }
+    }
+
+    async plant_newWatering() {
+        let body = {
+            token:
+                this.ck,
+        }
+        try {
+            let result = await this.taskRequest("post", `https://game.xiaojukeji.com/api/game/plant/newWatering?wsgsig=${this.get_wsgsig(body)}`, JSON.stringify(body))
+            //console.log(options);
+            //console.log(result);
+            if (result.errno == 0) {
+                $.log(`✅账号[${this.index}]-浇水成功-[${result.data.tree_progress}%]🎉`)
+
+            } else {
+                $.log(`❌账号[${this.index}]-浇水失败-[${result.errmsg}]`);
+                //console.log(result);
+            }
+        } catch (e) {
+            console.log(e);
+        }
+    }
+    get_wsgsig(OO) {
+        OO = JSON.stringify(OO);
+        function c(t) {
+            for (var e = t.length, n = t.length - 1; n >= 0; n--) {
+                var r = t.charCodeAt(n);
+                r > 127 && r <= 2047 ? e++ : r > 2047 && r <= 65535 && (e += 2),
+                    r >= 56320 && r <= 57343 && n--;
+            }
+            return e;
+        }
 
 
-def didiqc(uid,token):
-    myprint('--------滴滴打车新城活动--------')
-    data = {"xbiz":"240101","prod_key":"ut-dunion-wyc","xpsid":"d0765ac98e624e28920d626e87a26fc6","dchn":"o2vw2nM","xoid":"c5f5aeb5-19a4-4e60-9305-d45c37e48a27","xenv":"wxmp","xspm_from":"none.none.none.none","xpsid_root":"d0765ac98e624e28920d626e87a26fc6","xpsid_from":"","xpsid_share":"","env":{"dchn":"o2vw2nM","newTicket":token,"latitude":lat,"longitude":lng,"userAgent":"","fromChannel":"2","newAppid":"30012","openId":"","openIdType":"1","isHitButton":False,"isOpenWeb":True,"timeCost":7047},"req_env":"wx","dsi":"a4ce24f7e82060f61cb3ea252e2a35e8919kd2r2","source_id":"b08d62bd22133278c810","product_type":"didi","lng":lng,"lat":lat,"token":token,"uid":"","phone":""}
-    tijiao = requests.post(url=youhui, json=data).json()
-    if tijiao['errmsg'] == 'success':
-        for yh in tijiao['data']['rewards']:
-            myprint(f"获取到{yh['coupon']['max_benefit_capacity']['value']}{yh['coupon']['max_benefit_capacity']['unit']} {yh['coupon']['name']} {yh['coupon']['remark']}")
-    else:
-        myprint(tijiao['errmsg'])
-
-def yq(uid,token):
-    headers = {'content-type':'application/json'}
-    data = {"lang": "zh-CN","access_key_id": 9,"appversion": appversion,"channel": 1100000005,"_ds": "","xpsid": "","xpsid_root": "","root_xpsid": "","f_xpsid": "","xbiz": "110105","prod_key": "wyc-cpc-v-three","dchn": "kaxm7er","xoid": "ddaf1498-d170-4f3b-bcc7-541d12ee782f","xenv": "wxmp","xpsid_share": "","xspm_from": "none.none.none.none","args": {"invoke_key": "default","key": 299073592885446,"runtime_args": {"scene": 1037,"token": token,"lat": lat,"lng": lng,"env": {"dchn": "kaxm7er","newTicket": token,"model": "2201122C","fromChannel": "2","newAppid": "35009","openId": "","openIdType": "1","sceneId": "1007","isHitButton": False,"isOpenWeb": False,"timeCost": 199,"latitude": lat,"longitude": lng,"cityId": "","fromPage": "wyc-cpc-v-three/views/index/index","xAxes": "","yAxes": ""},"dsi": "fb98de6169fea3440a3cd5208f899286923sekiu","ncc": True,"x_test_user": {"key": 299073592885446}}},"need_page_config": True,"need_share_config": True,"xpsid_from": ""}
-    yy = requests.post(url=yao, json=data, headers=headers).json()
-    data = {"lang":"zh-CN","access_key_id":9,"appversion":"6.7.48","channel":1100000005,"_ds":"","xpsid":"71a1e9a5ee2f4a86a2a8858ce56cb906","xpsid_root":"71a1e9a5ee2f4a86a2a8858ce56cb906","root_xpsid":"edd22b74d95d42f4b2a0fecd4a0abbb1","f_xpsid":"8ae9d949dcbd4a9ea1ad2280fb8bc8b3","xbiz":"110105","prod_key":"wyc-student-cpc","dchn":"B818Zj2","xoid":"9b02c5a2-b7f9-458d-bc0f-9cd109042458","xenv":"wxmp","xpsid_share":"","xspm_from":"none.none.none.none","args":{"invoke_key":"default","key":299073592885446,"runtime_args":{"xak":"wyc-student-cpc-pUUCvFx9Rf47","scene":1042,"prod_key":"wyc-student-cpc","token":token,"lat":lat,"lng":lng,"env":{"openId":"","newTicket":token,"latitude":lat,"longitude":lng,"cityId":"","fromPage":"wyc-student-cpc/views/index/index","isHitButton":False,"xAxes":"","yAxes":"","timeCost":34},"dsi":"3df2abb8b05f45575907fe2d66f64511923kfn6a","ncc":True,"xenv":"wxmp","x_test_user":{"key":299073592885446}}},"need_page_config":True,"need_share_config":True,"xpsid_from":""}
-    requests.post(url='https://api.didi.cn/webx/chapter/product/init', json=data, headers=headers).json()
-
-
-#养券大师
-def yanquan(uid,token):
-    myprint('--------养券大师--------')
-    data = {"xbiz":"240301","prod_key":"ut-coupon-master","xpsid":"9996f669b85446069201ba6f066ac757","dchn":"BnGadK5","xoid":"c5f5aeb5-19a4-4e60-9305-d45c37e48a27","xenv":"wxmp","xspm_from":"welfare-center.none.c1324.none","xpsid_root":"660616ee6da44f2a83c6bad2b2e08f50","xpsid_from":"c4f1e647068a4f5d86c62f7327780548","xpsid_share":"","platform":1,"token":token}
-    tijiao = requests.post(url=yanquan1, json=data).json()
-    myprint(tijiao['errmsg'])
-    data = {"xbiz":"240301","prod_key":"ut-coupon-master","xpsid":"9996f669b85446069201ba6f066ac757","dchn":"BnGadK5","xoid":"c5f5aeb5-19a4-4e60-9305-d45c37e48a27","xenv":"wxmp","xspm_from":"welfare-center.none.c1324.none","xpsid_root":"660616ee6da44f2a83c6bad2b2e08f50","xpsid_from":"c4f1e647068a4f5d86c62f7327780548","xpsid_share":"","platform":1,"token":token}
-    tijiao = requests.post(url=yanquan2, json=data).json()
-    if tijiao['errmsg'] == 'success':
-        myprint(f"{tijiao['data']['rewards'][0]}")
-    else:
-        myprint(tijiao['errmsg'])
-    tijiao = requests.get(url=f'{yanquan3}{token}').json()
-    if tijiao['errmsg'] == 'success':
-        for rw in tijiao['data']['missions']:
-            data = {"xbiz":"240301","prod_key":"ut-coupon-master","xpsid":"88d45109c31446148a7c74b8f8134e9d","dchn":"BnGadK5","xoid":"c5f5aeb5-19a4-4e60-9305-d45c37e48a27","xenv":"wxmp","xspm_from":"welfare-center.none.c1324.none","xpsid_root":"660616ee6da44f2a83c6bad2b2e08f50","xpsid_from":"42309777210645b393e252f4056e37ff","xpsid_share":"","mission_id":rw['id'],"game_id":30,"platform":1,"token":token}
-            zuorw = requests.post(url=yanquan4, json=data).json()
-            linrw = requests.post(url=yanquan5, json=data).json()
-    else:
-        myprint(tijiao['errmsg'])
-    try:
-        yanquancj(uid,token)
-    except Exception as e:
-        myprint('--------抽奖结束--------')
-    data = {"xbiz":"240301","prod_key":"ut-coupon-master","xpsid":"23f60c5c42c2454cafc8edbb09f6c8ac","dchn":"BnGadK5","xoid":"c5f5aeb5-19a4-4e60-9305-d45c37e48a27","xenv":"wxmp","xspm_from":"welfare-center.none.c1324.none","xpsid_root":"4def26a78cd6460aab0d7268501c1ab8","xpsid_from":"e276b0683755450e851dbdc59e6ea927","xpsid_share":"","platform":1,"token":token}
-    tijiao = requests.post(url=yanquan7, json=data).json()
-    myprint(f"升级：{tijiao['errmsg']}")
-    data = {"xbiz":"240301","prod_key":"ut-coupon-master","xpsid":"5179b7a9bd884fe18a6988a1b176321e","dchn":"BnGadK5","xoid":"c5f5aeb5-19a4-4e60-9305-d45c37e48a27","xenv":"wxmp","xspm_from":"welfare-center.none.c1324.none","xpsid_root":"3d3b3b2ddf2f45c9ad3805805c5359f4","xpsid_from":"988f69329773413c98f3cae569a95483","xpsid_share":"","token":token,"platform":1}
-    tijiao = requests.post(url=yanquan8, json=data).json()
-    if tijiao['errmsg'] == 'success':
-        myprint(f"金币：{tijiao['data']['coin']}")
-        myprint(f"优惠券：满{tijiao['data']['coupon']['available']/100}抵扣{tijiao['data']['coupon']['amount']/100}元")
-    else:
-        myprint(tijiao['errmsg'])
-
-#养券大师
-def yanquancj(uid,token):
-    myprint('--------养券大师抽奖--------')
-    data = {"xbiz":"240301","prod_key":"ut-coupon-master","xpsid":"9996f669b85446069201ba6f066ac757","dchn":"BnGadK5","xoid":"c5f5aeb5-19a4-4e60-9305-d45c37e48a27","xenv":"wxmp","xspm_from":"welfare-center.none.c1324.none","xpsid_root":"660616ee6da44f2a83c6bad2b2e08f50","xpsid_from":"c4f1e647068a4f5d86c62f7327780548","xpsid_share":"","platform":1,"token":token}
-    tijiao = requests.post(url=yanquan6, json=data).json()
-    if tijiao['errmsg'] == 'success':
-        myprint(f"存在抽奖次数：{tijiao['data']['power']}")
-        for x in range(tijiao['data']['power']):
-            xx = x + 1
-            myprint(f"正在执行第{xx}次抽奖")
-            time.sleep(3)
-            tijiao1 = requests.post(url=yanquan6, json=data).json()
-    myprint('--------抽奖结束--------')
-
-def xuesyhui(uid,token):
-    myprint('--------这周学生优惠--------')
-    data = {"lang":"zh-CN","token":token,"access_key_id":"9","appversion":appversion,"channel":"1100000002","_ds":"","xpsid":"6a8936b32ea74e22a1e0f95cbcff95f3","xpsid_root":"0e8741afb52946609f8456d914f0cfe5","lat":lat,"lng":lng,"city_id":"33","platform":"wxmp"}
-    tijiao = requests.post(url=xuesyhui1, data=data).json()
-    if tijiao['errmsg'] == 'ok':
-        data = {'lang':'zh-CN','token':token,'access_key_id':9,'appversion':appversion,'channel':'1100000002','_ds':'','xpsid':'6a8936b32ea74e22a1e0f95cbcff95f3','xpsid_root':'0e8741afb52946609f8456d914f0cfe5','params':[{'group_id':tijiao['data']['week_award_data']['details'][0]['group_id'],'env':r'{\"dchn\":\"kjneo3J\",\"newTicket\":\"\",\"model\":\"2201122C\",\"fromChannel\":\"2\",\"newAppid\":\"35009\",\"openId\":\"\",\"openIdType\":\"\",\"sceneId\":\"1089\",\"isHitButton\":false,\"isOpenWeb\":false,\"timeCost\":1,\"latitude\":\"\",\"longitude\":\"\"}','prod_key':tijiao['data']['week_award_data']['base_info']['prod_key'],'xak':tijiao['data']['week_award_data']['base_info']['xak'],'xid':tijiao['data']['week_award_data']['base_info']['xid']}],'city_id':33,'lat':lat,'lng':lng,'platform':'wxmp'}
-        tijiao1 = requests.post(url=xuesyhui2, json=data).json()
-        if tijiao1['errmsg'] == 'ok':
-            if tijiao1['data']['reward_data'][0]['code_msg'] == 'ok':
-                for oo in tijiao1['data']['reward_data'][0]['base_info']['details'][0]['rewards']:
-                    myprint(f"{oo[0]['info'][0]['reward_name']}-{oo[0]['info'][0]['coupon_name']}-{oo[0]['info'][0]['status']}-{oo[0]['info'][0]['expire_time_desc']}")
-            else:
-                myprint(tijiao1['data']['reward_data'][0]['code_msg'])
-
-#判断福利金是否开启低于500抵扣
-def bdfulijing(uid,token):
-    url = f"https://pay.diditaxi.com.cn/phoenix_asset/common/app/query/auto/deduct?token={token}&asset_type=14"
-    tijiao = requests.get(url=url).json()
-    if tijiao['errmsg'] == '成功':
-        if tijiao['data']['status'] == 1:
-            myprint(f"福利金抵扣： 已开启")
-        else:
-            url = f"https://pay.diditaxi.com.cn/phoenix_asset/common/app/set/up/auto/deduct?token={token}&status=1&asset_type=14"
-            tijiao1 = requests.get(url=url).json()
-            myprint(f"福利金抵扣： 已开启")
+        function r(t) {
+            for (
+                var e =
+                    "ABCDEFG0123456789abcdefgHIJKLMN+/hijklmnOPQRSTopqrstUVWXYZuvwxyz",
+                n = "" + t,
+                r = void 0,
+                o = void 0,
+                i = 0,
+                u = "";
+                n.charAt(0 | i) || ((e = "="), i % 1);
+                u += e.charAt(63 & (r >> (8 - (i % 1) * 8)))
+            ) {
+                if ((o = n.charCodeAt((i += 0.75))) > 255)
+                    throw new Error(
+                        "'base64' failed: The string to be encoded contains characters outside of the Latin1 range."
+                    );
+                r = (r << 8) | o;
+            }
+            return u;
+        }
+        function o(t, e) {
+            for (var n = [], r = 0; r < e.length; r++)
+                n[r] = t[r % 4] ^ e.charCodeAt(r);
+            return (
+                (n = Array.prototype.slice.apply(t).concat(n)),
+                String.fromCharCode.apply(null, n)
+            );
+        }
 
 
-if __name__ == '__main__':
-    uid = 1
-    token = ""
-    if 'ddgyToken' in os.environ:
-        fen = os.environ.get("ddgyToken").split("@")
-        myprint(f'查找到{len(fen)}个账号')
-        myprint('==================================')
-        for duo in fen:
-            uid,token = duo.split("&")
-            try:
-                main(uid,token)
-                myprint('============📣结束📣============')
-            except Exception as e:
-                myprint('小错误')
-    else:
-        myprint('不存在青龙变量，本地运行')
-        if uid == '' or token == '':
-            myprint('本地账号密码为空')
-            exit()
-        else:
-            try:
-                main(uid,token)
-            except Exception as e:
-                myprint('小错误')
-    try:
-        print('==================================')
-        send_notification_message(title='滴滴出行')  # 发送通知
-    except Exception as e:
-        print('小错误')
+        //D参数为提交的param
+        function en(T) {
+            return (
+                "dd03-" +
+                r(
+                    o(
+                        new Uint8Array(
+                            new Uint32Array([
+                                Math.floor(4294967296 * Math.random()),
+                            ]).buffer
+                        ),
+                        T
+                    )
+                ).replace(/=*$/, "")
+            );
+        }
+        function MD5(data) {
+            const crypto = require("crypto");
+            return crypto.createHash("md5").update(data).digest("hex");
+        }
+        let time = Math.floor(new Date() / 1e3)
+        return en('ts=' + time + '&v=1&os=web&av=02&kv=0000010001&vl=' + c(OO) + '&sig=' + MD5("R4doMFFeMNlliIWM" + OO))
+    }
+
+}
+
+
+!(async () => {
+    if (!(await checkEnv())) return;
+    if (userList.length > 0) {
+        let taskall = [];
+        for (let user of userList) {
+            if (user.ckStatus) {
+                taskall.push(user.main());
+            }
+        }
+        await Promise.all(taskall);
+    }
+    await $.sendMsg($.logs.join("\n"))
+})()
+    .catch((e) => console.log(e))
+    .finally(() => $.done());
+
+//********************************************************
+/**
+ * 变量检查与处理
+ * @returns
+ */
+async function checkEnv() {
+    let userCookie = ($.isNode() ? process.env[ckName] : $.getdata(ckName)) || "";
+    if (userCookie) {
+        let e = envSplitor[0];
+        for (let o of envSplitor)
+            if (userCookie.indexOf(o) > -1) {
+                e = o;
+                break;
+            }
+        for (let n of userCookie.split(e)) n && userList.push(new Task(n));
+    } else {
+        console.log(`未找到CK【${ckName}】`);
+        return;
+    }
+    return console.log(`共找到${userList.length}个账号`), true; //true == !0
+}
+function Env(t, s) {
+    return new (class {
+        constructor(t, s) {
+            this.name = t;
+            this.data = null;
+            this.dataFile = "box.dat";
+            this.logs = [];
+            this.logSeparator = "\n";
+            this.startTime = new Date().getTime();
+            Object.assign(this, s);
+            this.log("", `\ud83d\udd14${this.name}, \u5f00\u59cb!`);
+        }
+        isNode() {
+            return "undefined" != typeof module && !!module.exports;
+        }
+        isQuanX() {
+            return "undefined" != typeof $task;
+        }
+        isSurge() {
+            return "undefined" != typeof $httpClient && "undefined" == typeof $loon;
+        }
+        isLoon() {
+            return "undefined" != typeof $loon;
+        }
+        loaddata() {
+            if (!this.isNode()) return {};
+            {
+                this.fs = this.fs ? this.fs : require("fs");
+                this.path = this.path ? this.path : require("path");
+                const t = this.path.resolve(this.dataFile),
+                    s = this.path.resolve(process.cwd(), this.dataFile),
+                    e = this.fs.existsSync(t),
+                    i = !e && this.fs.existsSync(s);
+                if (!e && !i) return {};
+                {
+                    const i = e ? t : s;
+                    try {
+                        return JSON.parse(this.fs.readFileSync(i));
+                    } catch (t) {
+                        return {};
+                    }
+                }
+            }
+        }
+        writedata() {
+            if (this.isNode()) {
+                this.fs = this.fs ? this.fs : require("fs");
+                this.path = this.path ? this.path : require("path");
+                const t = this.path.resolve(this.dataFile),
+                    s = this.path.resolve(process.cwd(), this.dataFile),
+                    e = this.fs.existsSync(t),
+                    i = !e && this.fs.existsSync(s),
+                    o = JSON.stringify(this.data);
+                e ? this.writeFileSync(t, o) : i ? this.fs.writeFileSync(s, o) : this.fs.writeFileSync(t, o);
+            }
+        }
+        lodash_get(t, s, e) {
+            const i = s.replace(/\[(\d+)\]/g, ".$1").split(".");
+            let o = t;
+            for (const t of i) if (((o = Object(o)[t]), void 0 === o)) return e;
+            return o;
+        }
+        lodash_set(t, s, e) {
+            return Object(t) !== t
+                ? t
+                : (Array.isArray(s) || (s = s.toString().match(/[^.[\]]+/g) || []),
+                    (s
+                        .slice(0, -1)
+                        .reduce(
+                            (t, e, i) =>
+                                Object(t[e]) === t[e]
+                                    ? t[e]
+                                    : (t[e] = Math.abs(s[i + 1]) >> 0 == +s[i + 1] ? [] : {}),
+                            t
+                        )[s[s.length - 1]] = e),
+                    t);
+        }
+        getdata(t) {
+            let s = this.getval(t);
+            if (/^@/.test(t)) {
+                const [, e, i] = /^@(.*?)\.(.*?)$/.exec(t),
+                    o = e ? this.getval(e) : "";
+                if (o)
+                    try {
+                        const t = JSON.parse(o);
+                        s = t ? this.lodash_get(t, i, "") : s;
+                    } catch (t) {
+                        s = "";
+                    }
+            }
+            return s;
+        }
+        setdata(t, s) {
+            let e = !1;
+            if (/^@/.test(s)) {
+                const [, i, o] = /^@(.*?)\.(.*?)$/.exec(s),
+                    h = this.getval(i),
+                    a = i ? ("null" === h ? null : h || "{}") : "{}";
+                try {
+                    const s = JSON.parse(a);
+                    this.lodash_set(s, o, t), (e = this.setval(JSON.stringify(s), i));
+                } catch (s) {
+                    const h = {};
+                    this.lodash_set(h, o, t), (e = this.setval(JSON.stringify(h), i));
+                }
+            } else e = this.setval(t, s);
+            return e;
+        }
+        getval(t) {
+            if (this.isSurge() || this.isLoon()) {
+                return $persistentStore.read(t);
+            } else if (this.isQuanX()) {
+                return $prefs.valueForKey(t);
+            } else if (this.isNode()) {
+                this.data = this.loaddata();
+                return this.data[t];
+            } else {
+                return this.data && this.data[t] || null;
+            }
+        }
+        setval(t, s) {
+            if (this.isSurge() || this.isLoon()) {
+                return $persistentStore.write(t, s);
+            } else if (this.isQuanX()) {
+                return $prefs.setValueForKey(t, s);
+            } else if (this.isNode()) {
+                this.data = this.loaddata();
+                this.data[s] = t;
+                this.writedata();
+                return true;
+            } else {
+                return this.data && this.data[s] || null;
+            }
+        }
+        initGotEnv(t) {
+            this.got = this.got ? this.got : require("got");
+            this.cktough = this.cktough ? this.cktough : require("tough-cookie");
+            this.ckjar = this.ckjar ? this.ckjar : new this.cktough.CookieJar();
+            if (t) {
+                t.headers = t.headers ? t.headers : {};
+                if (typeof t.headers.Cookie === "undefined" && typeof t.cookieJar === "undefined") {
+                    t.cookieJar = this.ckjar;
+                }
+            }
+        }
+        /**
+        * @param {Object} options
+        * @returns {String} 将 Object 对象 转换成 queryStr: key=val&name=senku
+        */
+        queryStr(options) {
+            return Object.entries(options)
+                .map(([key, value]) => `${key}=${typeof value === 'object' ? JSON.stringify(value) : value}`)
+                .join('&');
+        }
+        //从url获取参数组成json
+        getURLParams(url) {
+            const params = {};
+            const queryString = url.split('?')[1];
+            if (queryString) {
+                const paramPairs = queryString.split('&');
+                paramPairs.forEach(pair => {
+                    const [key, value] = pair.split('=');
+                    params[key] = value;
+                });
+            }
+            return params;
+        }
+        isJSONString(str) {
+            try {
+                var obj = JSON.parse(str);
+                if (typeof obj == 'object' && obj) {
+                    return true;
+                } else {
+                    return false;
+                }
+            } catch (e) {
+                return false;
+            }
+        }
+        isJson(obj) {
+            var isjson = typeof (obj) == "object" && Object.prototype.toString.call(obj).toLowerCase() == "[object object]" && !obj.length;
+            return isjson;
+        }
+        async sendMsg(message) {
+            if (!message) return;
+            if ($.isNode()) {
+                await notify.sendNotify($.name, message)
+            } else {
+                $.msg($.name, '', message)
+            }
+        }
+        async httpRequest(options) {
+            let t = {
+                ...options
+            };
+            if (!t.headers) {
+                t.headers = {}
+            }
+            if (t.params) {
+                t.url += '?' + this.queryStr(t.params);
+            }
+            t.method = t.method.toLowerCase();
+            if (t.method === 'get') {
+                delete t.headers['Content-Type'];
+                delete t.headers['Content-Length'];
+                delete t.headers['content-type'];
+                delete t.headers['content-length'];
+                delete t["body"]
+            }
+            if (t.method === 'post') {
+                let ContentType;
+                if (!t.body) {
+                    t.body = ""
+                } else {
+                    if (typeof t.body == "string") {
+                        if (this.isJSONString(t.body)) {
+                            ContentType = 'application/json'
+                        } else {
+                            ContentType = 'application/x-www-form-urlencoded'
+                        }
+                    } else if (this.isJson(t.body)) {
+                        t.body = JSON.stringify(t.body);
+                        ContentType = 'application/json';
+                    }
+                }
+                if (!t.headers['Content-Type'] || !t.headers['content-type']) {
+                    t.headers['Content-Type'] = ContentType;
+                }
+                delete t.headers['Content-Length'];
+            }
+            if (this.isNode()) {
+                this.initGotEnv(t);
+                let httpResult = await this.got(t);
+                if (this.isJSONString(httpResult.body)) {
+                    httpResult.body = JSON.parse(httpResult.body)
+                }
+                return httpResult;
+            }
+            if (this.isQuanX()) {
+                t.method = t.method.toUpperCase()
+                return new Promise((resolve, reject) => {
+                    $task.fetch(t).then(response => {
+                        if (this.isJSONString(response.body)) {
+                            response.body = JSON.parse(response.body)
+                        }
+                        resolve(response)
+                    })
+                })
+            }
+        }
+        randomNumber(length) {
+            const characters = '0123456789';
+            return Array.from({ length }, () => characters[Math.floor(Math.random() * characters.length)]).join('');
+        }
+        randomString(length) {
+            const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            return Array.from({ length }, () => characters[Math.floor(Math.random() * characters.length)]).join('');
+        }
+        timeStamp() {
+            return new Date().getTime()
+        }
+        uuid() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                var r = Math.random() * 16 | 0,
+                    v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+        time(t) {
+            let s = {
+                "M+": new Date().getMonth() + 1,
+                "d+": new Date().getDate(),
+                "H+": new Date().getHours(),
+                "m+": new Date().getMinutes(),
+                "s+": new Date().getSeconds(),
+                "q+": Math.floor((new Date().getMonth() + 3) / 3),
+                S: new Date().getMilliseconds(),
+            };
+            /(y+)/.test(t) &&
+                (t = t.replace(
+                    RegExp.$1,
+                    (new Date().getFullYear() + "").substr(4 - RegExp.$1.length)
+                ));
+            for (let e in s)
+                new RegExp("(" + e + ")").test(t) &&
+                    (t = t.replace(
+                        RegExp.$1,
+                        1 == RegExp.$1.length
+                            ? s[e]
+                            : ("00" + s[e]).substr(("" + s[e]).length)
+                    ));
+            return t;
+        }
+        msg(s = t, e = "", i = "", o) {
+            const h = (t) =>
+                !t || (!this.isLoon() && this.isSurge())
+                    ? t
+                    : "string" == typeof t
+                        ? this.isLoon()
+                            ? t
+                            : this.isQuanX()
+                                ? { "open-url": t }
+                                : void 0
+                        : "object" == typeof t && (t["open-url"] || t["media-url"])
+                            ? this.isLoon()
+                                ? t["open-url"]
+                                : this.isQuanX()
+                                    ? t
+                                    : void 0
+                            : void 0;
+            this.isMute ||
+                (this.isSurge() || this.isLoon()
+                    ? $notification.post(s, e, i, h(o))
+                    : this.isQuanX() && $notify(s, e, i, h(o)));
+            let logs = ['', '==============📣系统通知📣=============='];
+            logs.push(t);
+            e ? logs.push(e) : '';
+            i ? logs.push(i) : '';
+            console.log(logs.join('\n'));
+            this.logs = this.logs.concat(logs);
+        }
+        log(...t) {
+            t.length > 0 && (this.logs = [...this.logs, ...t]),
+                console.log(t.join(this.logSeparator));
+        }
+        logErr(t, s) {
+            const e = !this.isSurge() && !this.isQuanX() && !this.isLoon();
+            e
+                ? this.log("", `\u2757\ufe0f${this.name}, \u9519\u8bef!`, t.stack)
+                : this.log("", `\u2757\ufe0f${this.name}, \u9519\u8bef!`, t);
+        }
+        wait(t) {
+            return new Promise((s) => setTimeout(s, t));
+        }
+        done(t = {}) {
+            const s = new Date().getTime(),
+                e = (s - this.startTime) / 1e3;
+            this.log(
+                "",
+                `\ud83d\udd14${this.name}, \u7ed3\u675f! \ud83d\udd5b ${e} \u79d2`
+            )
+            this.log()
+            if (this.isNode()) {
+                process.exit(1)
+            }
+            if (this.isQuanX()) {
+                $done(t)
+            }
+        }
+    })(t, s);
+}
