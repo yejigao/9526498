@@ -1,5 +1,5 @@
 """
-cron: 6 6 6 6 6
+cron: 10 10 * * *
 先运行脚本，有问题到群里问 http://t.me/xiaoymgroup
 """
 
