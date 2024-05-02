@@ -2,7 +2,7 @@
 # -- coding: utf-8 --
 # @Time : 2023/6/30 10:23
 # -------------------------------
-# cron "5 6,22 * * *" script-path=xxx.py,tag=匹配cron用
+# cron "55 7,22 * * *" script-path=xxx.py,tag=匹配cron用
 # const $ = new Env('雨云签到');
 
 import json,requests,os,time
