@@ -1,6 +1,6 @@
 # 酷狗音乐
 # author @wangquanfugui233
-# cron "*/30 8-18 * * *"
+# cron */30 8-18 * * *
 # 抓酷狗gateway的url的带有dfid=&appid=&token=&mid=&clientver=&from=client&clienttime=&userid&uuid=有这几个就行，不要求排序，脚本自动的,
 # 抓提现的openid,去提现页面,点一下提现至微信就能抓到的了，nickname 也一样,ture=2提现2块 ture=5就提现5块，依次类推
 # 变量 export kgyycks='url?后面的参数，不要url?只要参数#openid#nickname#ture=2'多号用@分开
