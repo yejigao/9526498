@@ -1,4 +1,10 @@
-
+"""
+# new Env("七猫免费小说")
+# cron: 1 9,16-22 * * *
+通用代码
+只需要修改  asyncio.run(common.main("qimao"))  "qimao"代表七猫脚本 "ydcd"代表 有道词典，现有hkread ,speedread,fyys,shengdu,kgyy,qimao
+代码请勿用于非法盈利，一切与本人无关，该代码仅用于学习交流，请阅览下载24小时内删除代码
+"""
 import asyncio
 import platform
 import sys
@@ -26,9 +32,9 @@ def check_environment(file_name):
 
 def check_so_file(filename, py_v, cpu_info):
     if os.path.exists(filename):
-        print(f"{filename} 存在")
-        import qimao as qm
-        asyncio.run(qm.main())
+        print(f"存在{filename} 文件,继续执行")
+        import common
+        asyncio.run(common.main("qimao"))
     else:
         print(f"不存在{filename}文件,准备下载文件")
         url = 'https://files.doudoudou.top/?f=/script/others'
@@ -69,4 +75,4 @@ def download_so_file(filename, py_v, cpu_info, main_url):
             download_so_file(filename,py_v,cpu_info,main_url='https://files.doudoudou.top/?f=/script/others')
 
 if __name__ == '__main__':
-    check_environment('qimao.so')
+    check_environment('common.so')
