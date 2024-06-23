@@ -2,7 +2,7 @@
 项目名: 熊猫代理
 版本号：V1.00
 作者: 幻生
-注册地址: http://www.xiongmaodaili.com?invitationCode=2A609042-FAC9-4943-BBF7-04A4D9F471A3
+注册地址: http://www.xiongmaodaili.com/register?invitationCode=382D8A7E-65CC-4028-828E-87DCA44D9AD9
 脚本功能:
     自动签到获取积分
 
