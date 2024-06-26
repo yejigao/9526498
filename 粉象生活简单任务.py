@@ -1,5 +1,7 @@
 """
 变量名 fxshCK     &隔开多个号，格式：备注#token#did
+微信注册地址：https://m.fenxianglife3.com/h5-official/appPages/general/ttl-withdraw/index.html?unionId=oqICk1KNcEE0x8ngbKauBN5uuS9g#/share
+注册好后下载app
 """
 
 import hashlib
