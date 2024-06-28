@@ -1,22 +1,21 @@
 /**
- * 
- * 项目类型：微信小程序
- * 项目名称：口味王
+ *
+ * 项目名称：口味王小程序
  * 项目抓包：抓tls-xw.mengniu.cn下的memberId & memberUnionid填入变量
- * 项目变量：lekebo_kww_Cookie
- * 项目定时：每40分钟运行一次
- * cron: 0 40 0 * * *
- * github仓库：https://github.com/qq274023/lekebo/
- * 
- * 交流Q群：104062430 作者:乐客播 欢迎前来提交bug
+ * 项目变量：KWW
+ * 项目定时：每天9，18，20
+ * cron: 0 9,18,20 * * *
+ * github仓库：https://github.com/CHERWING/CHERWIN_SCRIPTS
+ *
  */
 
-
 //===============脚本版本=================//
-let scriptVersion = "1.0.2";
-let update_data = "2023-05-10-20-16";
+let local_version = "2024.05.24";
 //=======================================//
-const $ = new Env('口味王');
+const APP_NAME = '口味王小程序'
+const $ = new Env('口味王小程序');
+const ENV_NAME = 'KWW'
+
 const notify = $.isNode() ? require('./sendNotify') : '';
 const Notify = 1 		//0为关闭通知,1为打开通知,默认为1
 const JSEncrypt = require('node-jsencrypt');
@@ -34,11 +33,14 @@ const {JSDOM} = require('jsdom');
 let request = require("request");
 request = request.defaults({jar: true});
 const {log} = console;
-let scriptVersionLatest = "";
-let UserCookie = ($.isNode() ? process.env.lekebo_kww_Cookie : $.getdata('lekebo_kww_Cookie')) || '';
+let APP_CONFIG = "";
+let UserCookie = ($.isNode() ? process.env.KWW : process.env.KWW ) || '';
+let SCRIPT_UPDATE = process.env.SCRIPT_UPDATE || true;
+// console.log(process.env.KWW)
 let UserCookieArr = [];
 let data = '';
 let msg =``;
+let one_msg = '';
 let isSign = false;
 let signCateId = '';
 let signRulesName = '';
@@ -47,14 +49,15 @@ let signOrderNo = '';
 let userKeys = 'v1.0';
 let formName = 'searchForm';
 let memberUnionid = '1';
-let qgyUrl = 'https://89420.activity-20.m.duiba.com.cn/projectx/p85657820/index.html?appID=89420';
+let qgyUrl = '';
 let gameCookie = '';
 let loginUrl = '';
 let qgyTaskData = [];
 let qgySignFlag = false;
 let isTravelling = false;
-let leftEnergyBall = 0;
+let leftEnergyNum = 0;
 let qgyProcess = '';
+let greenFruitNum = 0;
 let tokenStr = '';
 let tokenKeyStr = '';
 let qgyToken = '';
@@ -63,50 +66,144 @@ let articleReadList = [];
 let taskBeforeScore = 0;
 var timestamp = new Date().getTime();
 var trandom = randomNum(1, 28);
-
+let drawTimes = ''
+let lessGameCount= 0;
+let loveGame_recordId='';
+let FKPHtml = ''
+let downTime = 0
+let pointRain_times = 0
+let JFY_URL = ''
+let FKP_URL = ''
+let pointRain_startId = ''
+let pointRain_activityStatus = true
+let QGY_inviteCode = []
+let AuthorinviteCode= ['IDTCLG','7LUL2L','BZZWJJ']
+let AuthorCid = ['4116743840','4094106667','4093679412']
+let QGY_canSteal = []
+let TYT_URL = ''
+let Jump_creditsCostId=''
+let Jump_startId=''
+let Jump_costResult = false
+let Jump_PKstatus = false
+console.log('✨✨✨ 口味王会员中心小程序签到✨✨✨\n' +
+    '✨ 功能：\n' +
+    '      积分签到\n' +
+    '      部分积分任务\n' +
+    '✨ 抓包步骤：\n' +
+    '      打开抓包工具\n' +
+    '      打开口味王会员中心小程序\n' +
+    '      授权登陆\n' +
+    '      找/member/api/info/的URl提取返回[memberId@unionid]（@符号连接）\n' +
+    '参数示例：4249095xxxxxx@oWmTE6IqrlDFRzxxxxx\n' +
+    '✨ ✨✨wxpusher一对一推送功能，\n' +
+    '  ✨需要定义变量export WXPUSHER=wxpusher的app_token，不设置则不启用wxpusher一对一推送\n' +
+    '  ✨需要在KWW变量最后添加@wxpusher的UID\n' +
+    '✨ 设置青龙变量：\n' +
+    'export KWW=\'memberId@unionid@openid参数值\'多账号#或&分割\n' +
+    'export SCRIPT_UPDATE = \'False\' 关闭脚本自动更新，默认开启\n' +
+    '✨ 推荐cron：0 9 * * *\n' +
+    '✨✨✨ @Author CHERWIN✨✨✨')
 //=======================================//
+UserCookieArr = ENV_SPLIT(UserCookie)
 !(async () => {
-    if (typeof $request !== "undefined") {
-        await GetRewrite();
-    } else {
-        if (!(await Envs())){
-            return;
+        if (!(UserCookieArr)) {
+            console.log(`未定义${ENV_NAME}变量`)
+            process.exit();
         } else {
-            DoubleLog(`\n 交流Q群：104062430 作者:乐客播 欢迎前来提交bug`)
-            await getVersion();
-            DoubleLog(`\n================ 共找到 ${UserCookieArr.length} 个账号 ================ \n 脚本执行✌北京时间(UTC+8)：${new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60 * 1000 + 8 * 60 * 60 * 1000).toLocaleString()} \n================ 版本对比检查更新 ================`);          
-            if (scriptVersionLatest != scriptVersion) {
-                DoubleLog(`\n 当前版本：${scriptVersion}`)
-                DoubleLog(`\n 最新版本：${scriptVersionLatest}`)
-                DoubleLog(`\n 更新信息：${update_data}`)
-            } else {
-                DoubleLog(`\n 版本信息：${scriptVersion} ，已是最新版本无需更新开始执行脚本`)
-            }
-            for (let index = 0; index < UserCookieArr.length; index++) {
-                let num = index + 1
-                DoubleLog(`\n================ 开始第 ${num} 个账号 ================`)
-                memberId = UserCookieArr[index].split("&")[0];
-                unionid = UserCookieArr[index].split("&")[1];
-                taskBeforeScore = 0;
-                await start();
-                await $.wait(2000);
-                if (isArticleReadFlag) {
-                    DoubleLog(`\n 账号【${num}】: ❌ , 阅读失败已经完成了`)
-                } else {
-                    await readSubmit();
-                    await $.wait(2000);
+        // 版本检测
+        await getVersion();
+        Log(`\n 脚本执行✌北京时间(UTC+8)：${new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60 * 1000 + 8 * 60 * 60 * 1000).toLocaleString()} `)
+        console.log(`\n================ 共找到 【${UserCookieArr.length}】 个账号 ================ \n================ 版本对比检查更新 ================`);
+        if (await compareVersions(local_version, APP_CONFIG['NEW_VERSION'])){
+                Log(`\n 当前版本：${local_version}`)
+                Log(`\n 最新版本：${APP_CONFIG['NEW_VERSION']}`)
+                if (SCRIPT_UPDATE==true){
+                    console.log('开始更新脚本')
+                    const fileUrl = `https://github.com/CHERWING/CHERWIN_SCRIPTS/raw/main/${ENV_NAME}.js`;
+                    const downloadPath = `./${ENV_NAME}.js`;
+                    downloadFile(fileUrl, downloadPath)
                 }
-                await getQgyUrl();
-                await activeTaskFlag(2 * 1000)
-                await finishQgy(num);
-                //log(`\n==== 积分查询 ====\n`)
-                await getMemberScore();
-            }
-            await SendMsg(msg);
-        }
-    }
 
-})()
+        }else{
+            console.log(`版本信息：${local_version} ，已是最新版本无需更新开始执行脚本`)
+        }
+
+        for (let index = 0; index < UserCookieArr.length; index++) {
+            one_msg = ''
+            let send_UID = ''
+            let num = index + 1
+            Log(`\n================ 开始第 【${num}】 个账号 -------->>>>>\n`)
+            // console.log(UserCookieArr[index])
+            if (num % 4 === 0) {
+                console.log('>>>>>>每4个账号等待60秒继续执行')
+                await $.wait(1000*60);
+            }
+            await $.wait(await delay());
+            let split_info = UserCookieArr[index].split("@")
+            memberId = split_info[0];
+            unionid = split_info[1];
+            let len_split_info = split_info.length
+            let last_info = split_info[len_split_info - 1]
+            // await DO_Jump()
+            taskBeforeScore = 0;
+            await start();
+            await $.wait(2000);
+            if (isArticleReadFlag) {
+                Log(`账号【${num}】: ❌ , 阅读失败,已经完成了`)
+            } else {
+                await readSubmit();
+                await $.wait(2000);
+            }
+            await $.wait(2000);
+            // await activeTaskFlag(2 * 1000)
+            await DO_QGY(num);
+            // await $.wait(2000);
+            // await DO_FKP();已结束
+            // await $.wait(5000);
+            // await DO_PointRain();已结束
+            await $.wait(5000);
+            //await DO_Jump();
+            //log(`\n==== 积分查询 ====\n`)
+            await getMemberScore();
+
+            console.log('\n====== 开始一对一推送 ======')
+            if (len_split_info > 0 && last_info.includes("UID_")) {
+                console.log(`>检测到设置了UID:【${last_info}】✅`);
+                send_UID = last_info
+                await send_wxpusher(send_UID,one_msg,APP_NAME);
+            }else{
+                Log('>未检测到wxpusher UID，不执行一对一推送❌')
+            }
+            await $.wait(3000);
+        }
+        // for (let index = 0; index < UserCookieArr.length; index++) {
+        //     one_msg = ''
+        //     let send_UID = ''
+        //     let num = index + 1
+        //     Log(`\n================ 开始第 【${num}】 个账号本地互助 -------->>>>>\n`)
+        //     await $.wait(await delay());
+        //     let split_info = UserCookieArr[index].split("@")
+        //     memberId = split_info[0];
+        //     unionid = split_info[1];
+        //     let len_split_info = split_info.length
+        //     let last_info = split_info[len_split_info - 1]
+        //
+        //     await QGY_help(num)
+        //     console.log('\n====== 开始一对一推送 ======')
+        //     if (len_split_info > 0 && last_info.includes("UID_")) {
+        //         console.log(`>检测到设置了UID:【${last_info}】✅`);
+        //         send_UID = last_info
+        //         await send_wxpusher(send_UID,one_msg,APP_NAME);
+        //     }else{
+        //         Log('>未检测到wxpusher UID，不执行一对一推送❌')
+        //     }
+        //     await $.wait(5000);
+        // }
+        Log(APP_CONFIG['GLOBAL_NTC'])
+        await SendMsg(msg);
+
+    }}
+)()
     .catch((e) => log(e))
     .finally(() => $.done())
 
@@ -118,19 +215,19 @@ async function start() {
     await getMemberInfo(2 * 1000);
     await $.wait(2000);
     await getMemberScore();
-    await $.wait(2000);
-    await getQgyUrl();
+    // await $.wait(2000);
+    // await getQgyUrl();
     await $.wait(2000);
     await getMrYdUrl();
     await $.wait(2000);
-    await getOtherUrl();
-    await $.wait(2000);
+    // await getOtherUrl();
+    // await $.wait(2000);
     await xxsBanner();
-    await $.wait(2000);
-    await getAnswerLists();
+    // await $.wait(2000);
+    // await getAnswerLists();
     await $.wait(2000);
     await selectTaskList();
-    await $.wait(2000);
+
     return true;
 }
 /**
@@ -159,12 +256,13 @@ function getMemberInfo(timeout = 2000) {
                 if (result.hasOwnProperty('flag') && result.flag == "T") {
                     userCname = result.result.memberInfo.userCname
                     memberUnionid = result.result.memberInfo.unionid
-                    DoubleLog(`\n 登录成功: ✅ ，获取【${userCname}】会员信息成功`)
+                    Log(`>登录成功✅`)
+                    Log(`>用户名：【${userCname}】`)
                 } else {
-                    DoubleLog(`\n 登录失败: ❌ ，原因是：${data}`)
+                    Log(`>登录失败: ❌ ，原因是：${data}`)
                 }
             } catch (e) {
-                DoubleLog(`查询会员信息异常：${data}，原因：${e}`)
+                console.log(`>查询会员信息异常❌：${data}，原因：${e}`)
             } finally {
                 resolve();
             }
@@ -177,6 +275,7 @@ function getMemberInfo(timeout = 2000) {
  * @returns {Promise<unknown>}
  */
 async function getMemberScore(timeout = 2000) {
+    Log('====== 获取积分信息 ======')
     return new Promise((resolve) => {
         var options = {
             method: 'GET',
@@ -210,17 +309,17 @@ async function getMemberScore(timeout = 2000) {
                 if (data.hasOwnProperty('flag') && data.flag == "T") {
                     if (taskBeforeScore == 0) {
                         taskBeforeScore = data.rows;
-                        DoubleLog(`\n 【${userCname}】当前积分：${data.rows}`)
+                        Log(`>当前积分：${data.rows}`)
                     } else {
                         var calScore = parseInt(data.rows) - parseInt(taskBeforeScore);
-                        DoubleLog(`\n ================ 获取积分信息 ================`)
-                        DoubleLog(`\n 【${userCname}】当前积分：${data.rows}，本次任务获取积分：${calScore}`)
+                        // Log(`>\n获取积分信息成功✅`)
+                        Log(`>执行后积分：${data.rows}，本次获得【${calScore}】积分`)
                     }
                 } else {
-                    addNotifyStr(`查询积分失败，原因是：${data.msg}`, true)
+                    console.log(`>查询积分失败❌，原因是：${data.msg}`)
                 }
             } catch (e) {
-                log(`查询积分失败异常：${data}，原因：${e}`)
+                log(`>查询积分失败异常：${data}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(1, error);
@@ -235,6 +334,7 @@ async function getMemberScore(timeout = 2000) {
  * @returns {Promise<unknown>}
  */
 async function selectTaskList() {
+    console.log('====== 查询签到任务列表 ======')
     return new Promise((resolve) => {
         var options = {
             method: 'GET',
@@ -268,13 +368,13 @@ async function selectTaskList() {
                             isArticleReadFlag = (complete == 1) ? true : false;
                         }
                     }
-                    DoubleLog(`================ 获取任务列表成功 ================`)
+                    console.log(`>获取任务列表成功✅`)
                 } else {
-                    DoubleLog(`================ 获取任务列表失败 ================`)
-                    DoubleLog(`\n 获取任务列表，原因是：${data.msg}`)
+                    console.log(`>获取任务列表失败❌`)
+                    console.log(`获取任务列表，原因是：${data.msg}`)
                 }
             } catch (e) {
-                DoubleLog(`获取任务列表异常：${data}，原因：${e}`)
+                console.log(`获取任务列表异常：${data}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(1, error);
@@ -317,9 +417,9 @@ async function signIn() {
         axios.request(options).then(function (response) {
             var data = response.data;
             if (data.hasOwnProperty('flag') && data.flag == "T") {
-                DoubleLog(`\n 签到成功: ✅ ，${signRulesName}获得 ${signParamNo} 积分`)
+                Log(`签到成功: ✅ ，${signRulesName}获得 ${signParamNo} 积分`)
             } else {
-                DoubleLog(`\n 签到失败: ❌ ，失败原因是：${data.msg}`)
+                Log(`签到失败: ❌ ，失败原因是：${data.msg}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -337,8 +437,8 @@ async function xxsBanner() {
     return new Promise((resolve) => {
         var options = {
             method: 'GET',
-            url: 'https://cms.kwwblcj.com/data/xxsbanner2.json',
-            params: {T: timestampMs(), memberId: memberId},
+            url: 'https://cms2.kwwblcj.com/data/xxsbanner2.json',
+            params: {T: timestampMs()},
             headers: {
                 Host: 'cms.kwwblcj.com',
                 Connection: 'keep-alive',
@@ -354,9 +454,9 @@ async function xxsBanner() {
             try {
                 var data = response.data;
                 articleReadList = data.rows;
-                //log(`获取到${articleReadList.length}条资讯`)
+                log(`获取到${articleReadList.length}条资讯`)
             } catch (e) {
-                DoubleLog(`获取资讯信息异常：${data}，原因：${e}`)
+                console.log(`获取资讯信息异常❌：${data}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -388,12 +488,12 @@ async function readInfo() {
             try {
                 var data = response.data;
                 if (data.hasOwnProperty('flag') && data.flag == "T") {
-                    DoubleLog(`查询阅读信息成功`)
+                    console.log(`>查询阅读信息成功✅`)
                 } else {
-                    DoubleLog(`查询阅读信息失败，原因是：${data.msg}`)
+                    console.log(`>查询阅读信息失败❌，原因是：${data.msg}`)
                 }
             } catch (e) {
-                DoubleLog(`查询阅读信息异常：${data}，原因：${e}`)
+                console.log(`>查询阅读信息异常❌：${data}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -437,12 +537,12 @@ async function readSubmit() {
             try {
                 var data = response.data;
                 if (data.hasOwnProperty('flag') && data.flag == "T") {
-                    DoubleLog(`\n 每日阅读: ✅ ，成功 ${data.rows}`)
+                    Log(`每日阅读: 成功✅ ${data.rows}`)
                 } else {
-                    DoubleLog(`\n 每日阅读: ❌ ，失败，原因是：${data.msg}`)
+                    Log(`每日阅读: 失败❌ 原因是：${data.msg}`)
                 }
             } catch (e) {
-                DoubleLog(`阅读信息异常：${data}，原因：${e}`)
+                console.log(`阅读信息异常❌：${data}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -472,61 +572,19 @@ async function activeTaskFlag(timeout = 2000) {
             try {
                 let result = JSON.parse(data);
                 if (result.hasOwnProperty('flag') && result.flag == "T") {
-                    DoubleLog(`\n 青果信息: ✅ ，获取成功时间：${result.rows}`)
+                    console.log(`青果信息: 获取成功✅ 时间：${result.rows}`)
                 } else {
-                    DoubleLog(`\n 青果信息: ❌ ，失败原因是：${data}`)
+                    console.log(`青果信息:  失败❌原因是：${data}`)
                 }
             } catch (e) {
-                DoubleLog(`点击青果 异常：${data}，原因：${e}`)
+                console.log(`点击青果 异常❌：${data}，原因：${e}`)
             } finally {
                 resolve();
             }
         }, timeout)
     })
 }
-/**
- * 获取青果地址
- * @returns {Promise<unknown>}
- */
-async function getQgyUrl() {
-    return new Promise((resolve) => {
-        var options = {
-            method: 'GET',
-            url: 'https://cms.kwwblcj.com/data/c00.json',
-            params: {T: timestampMs(), memberId: memberId},
-            headers: {
-                Host: 'cms.kwwblcj.com',
-                Connection: 'keep-alive',
-                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
-                'user-timestamp': timestamp,
-                'user-random': trandom,
-                'content-type': 'application/json',
-                'User-Agent': getUA(),
-                Referer: 'https://servicewechat.com/wxfb0905b0787971ad/58/page-frame.html'
-            }
-        };
-        axios.request(options).then(function (response) {
-            try {
-                var data = response.data;
-                for (var i in data.rows) {
-                    var url = data.rows[i]["url"];
-                    var manuscriptId = data.rows[i]["manuscriptId"];
-                    if (url.indexOf('https') >= 0) {
-                        qgyUrl = url;
-                        return;
-                    }
-                }
-            } catch (e) {
-                DoubleLog(`查询青果地址异常：${data}，原因：${e}`)
-            }
-        }).catch(function (error) {
-            console.error(error);
-        }).then(res => {
-            //这里处理正确返回
-            resolve();
-        });
-    })
-}
+
 /**
  * 登入
  * @param redirect
@@ -561,9 +619,10 @@ async function loginFreePlugin(redirect) {
                 var data = response.data;
                 if (data.hasOwnProperty('flag') && data.flag == 'T') {
                     loginUrl = data.result;
+                    Log(`>登入成功✅`)
                 }
             } catch (e) {
-                DoubleLog(`登入异常：${data}，原因：${e}`)
+                console.log(`登入异常❌：${data}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -603,149 +662,267 @@ async function setCookies() {
                     },
                 }, function (err, res, body) {
                     gameCookie = res.request.headers.cookie;
-                    //DoubleLog(`转换Cookie成功！`)
+                    if (gameCookie){
+                        console.log(`>转换Cookie成功！✅`)
+                    }else{
+                        console.log(`>转换Cookie失败！❌`)
+                    }
+
                 })
         } catch (e) {
-            DoubleLog(e)
+            console.log(e)
         } finally {
             resolve();
         }
     })
 }
+
+
 /**
  * 完成青果园
  * @param num
  * @returns {Promise<boolean>}
  */
-async function finishQgy(num) {
+async function DO_QGY(num) {
+    console.log('\n--------------------开始嫩青果园活动----------------------')
+    qgyUrl = 'https://89420.activity-20.m.duiba.com.cn/projectx/p124e3402/index.html?appID=89420';
     await loginFreePlugin(qgyUrl);
     await $.wait(3000)
     if (loginUrl == "") {
-        DoubleLog(`账号【${num}】登录青果园异常，自动跳过任务！`);
+        Log(`账号【${num}】登录青果园异常❌，自动跳过任务！`);
         return false;
     }
     await setCookies();
     await $.wait(3000);
     if (gameCookie == "") {
-        DoubleLog(`账号【${num}】cookies异常，自动跳过任务！`);
+        Log(`账号【${num}】cookies异常❌，自动跳过任务！`);
         return false;
     }
     var urlMatch = qgyUrl.match('([^/]+)/?$');
     var baseUrl = qgyUrl.replace(urlMatch[0], '');
     await getTokenKeyStr(baseUrl);
     await $.wait(2000);
+    await getTokenStr(baseUrl);
+    qgyToken = dealToken(tokenStr, tokenKeyStr);
+    let isGuide = false
+    isGuide = await stepNewGuide(baseUrl, qgyToken)
+    while(isGuide == false){
+        await $.wait(2000);
+        await getTokenStr(baseUrl);
+        qgyToken = dealToken(tokenStr, tokenKeyStr);
+        await $.wait(2000);
+        isGuide = await stepNewGuide()
+    }
+
+
+
+    await $.wait(2000);
     await getQgyInfo(baseUrl);
+
     await getTokenStr(baseUrl);
     await $.wait(2000);
     await qgyCheckQuery(baseUrl);
     await $.wait(2000);
     if (qgySignFlag) {
-        DoubleLog(`\n 果园签到: ❌ , 失败今天已经签到过了！`);
+        Log(`>果园签到:  今天已经签到过了！✅`);
     } else {
+        Log(`>今日未签到✅`);
         try {
             await getTokenStr(baseUrl);
             await $.wait(2000);
             qgyToken = dealToken(tokenStr, tokenKeyStr);
             await $.wait(2000);
-            await qgyCreateItem(baseUrl, qgyToken)
-            await delay();
+            // await qgyCreateItem(baseUrl, qgyToken)
+            await $.wait(await delay());
             await getTokenStr(baseUrl);
             await $.wait(2000);
             qgyToken = dealToken(tokenStr, tokenKeyStr);
             await qgySign(baseUrl, qgyToken);
-            await getTokenStr(baseUrl);
-            await $.wait(2000);
-            qgyToken = dealToken(tokenStr, tokenKeyStr);
-            if(currentStatusHaveMillis == currentStatusNeedMillis){
+
+            if(upNeedNum==null || upNeedNum==0){
+                await getTokenStr(baseUrl);
+                await $.wait(2000);
+                qgyToken = dealToken(tokenStr, tokenKeyStr);
                 await collectCoconut(baseUrl, qgyToken)
             }
         } catch (e) {
-            DoubleLog(`账号【${num}】青果园签到异常！${e}`);
+            Log(`>账号【${num}】青果园签到异常！${e}`);
         }
 
     }
-    await queryQgyTask(baseUrl);
-    if (qgyTaskData.length == 0) {
-        DoubleLog(`账号【${num}】获取青果园任务异常！`);
+    if (!isTravelling && greenFruitNum >= 20) {
+        try {
+            console.log(`>>>准备执行任务:【旅行】`);
+            await getTokenStr(baseUrl);
+            await $.wait(2000);
+            qgyToken = dealToken(tokenStr, tokenKeyStr);
+            await $.wait(2000);
+            await startTravel(baseUrl, qgyToken);
+            await $.wait(2000);
+        } catch (e) {
+            console.log(`>账号【${num}】青果园旅行异常❌！${e}`);
+        }
     } else {
+        console.log(`>正在旅行中或青果不足20`);
+    }
+    await $.wait(2000);
+    await queryQgyTask(baseUrl);
+    await $.wait(2000);
+    if (qgyTaskData.length == 0) {
+        Log(`账号【${num}】获取青果园任务异常！❌`);
+    } else {
+        // console.log(qgyTaskData)
         for (var i in qgyTaskData) {
+            // console.log(`>当前任务: 【${title}】`)
+            await $.wait(2000);
             var id = qgyTaskData[i]["id"];
             var taskCode = qgyTaskData[i]["code"];
             var title = qgyTaskData[i]["title"];
+            var prizePendingCode = qgyTaskData[i]["prizePendingCode"];
             var taskStatus = parseInt(qgyTaskData[i]["taskStatus"]);
             if (taskStatus == 2) {
-                DoubleLog(`\n 任务信息: ❌ , 【${title}】已经完成了！`);
+                console.log(`>任务: 【${title}】已经完成了！✅`);
+            }else if(taskStatus == 1 && prizePendingCode){
+                console.log(`>任务: 【${title}】待领取！`);
+                await getTokenStr(baseUrl);
+                await $.wait(2000);
+                qgyToken = dealToken(tokenStr, tokenKeyStr);
+                await $.wait(2000);
+                await sendPrize(baseUrl,taskCode,prizePendingCode,title,qgyToken);
             } else {
                 switch (id) {
-                    case 'y1z0wktv':
-                        //出门旅行
-                        if (!isTravelling) {
-                            try {
-                                DoubleLog(`\n 任务信息: 准备执行【${title}】`);
-                                await getTokenStr(baseUrl);
-                                await $.wait(2000);
-                                qgyToken = dealToken(tokenStr, tokenKeyStr);
-                                await $.wait(2000);
-                                await startTravel(baseUrl, qgyToken);
-                                await $.wait(2000);
-                            } catch (e) {
-                                DoubleLog(`账号【${num}】青果园旅行异常！${e}`);
-                            }
-                        } else {
-                            DoubleLog(`\n 旅行信息: ❌ , 【出门旅行】正在旅行中....`);
+                    case '1vp2qd9d':// 邀请好友参与种树
+                        console.log(`>>>准备执行任务:【${title}】`);
+                        await getTokenStr(baseUrl);
+                        await $.wait(2000);
+                        await get_QGY_InviteCode(baseUrl,dealToken(tokenStr, tokenKeyStr))
+                        break;
+
+                    case 'jnb9obsa':// 赠送好友能量
+                        console.log(`>>>准备执行任务:【${title}】`);
+                        for (var i=0;i<=AuthorCid.length;i++){
+                            await getTokenStr(baseUrl);
+                            await $.wait(2000);
+                            await QGY_giveEnergy(baseUrl,dealToken(tokenStr, tokenKeyStr),AuthorCid[i-1])
                         }
                         break;
-                    case '9pc7awxr':
-                    case 'fn473yer':
-                    case '494cc96q':
-                    case 'qyksf6pq':
-                    case 'ozzl0eqx':
-                    case 'dnv1dbct':
-                    case 'yaavhjoi':
+                    case '5re9y7rb':// 浏览资讯页
+                    case '8pu8vs3s':// 参与海岛跳一跳
+                    case 'm2jlv8yb':// 参与欢乐消除
+                    case 'wk3mv0k9':// 参与美味连连看
+                    case 'irigwir9':// 参与点卤大作战
                         //完成任务
-                        DoubleLog(`\n 任务信息: 准备执行【${title}】`);
+                        console.log(`>>>准备执行任务:【${title}】`);
                         try {
                             await getTokenStr(baseUrl);
                             await $.wait(2000);
                             qgyToken = dealToken(tokenStr, tokenKeyStr);
                             await $.wait(2000);
-                            await finishBrowseInfoTask(baseUrl, qgyToken, taskCode, title);
-                            await $.wait(2000);
-                            await newRewardInfo(baseUrl);
+                            prizePendingCode = await doCompleted(baseUrl, qgyToken, taskCode, title);
+
+                            if (prizePendingCode != ''){
+                                await getTokenStr(baseUrl);
+                                await $.wait(2000);
+                                qgyToken = dealToken(tokenStr, tokenKeyStr);
+                                await $.wait(2000);
+                                await sendPrize(baseUrl,taskCode,prizePendingCode,title,qgyToken);
+                            }
+
                         } catch (e) {
-                            DoubleLog(`\n 任务信息: ❌ , 青果园${title}异常！${e}`);
+                            console.log(`>任务:【${title}】异常❌！${e}`);
                         }
                         break;
                     default:
-                        DoubleLog(`\n 任务信息: ❌ , 【${title}】不支持自动完成！`)
+                        console.log(`>任务:【${title}】暂不支持，跳过！`)
                         break;
                 }
             }
 
         }
     }
+
+    if (AuthorinviteCode){
+        for(var i = 1;i <= AuthorinviteCode.length;i++){
+            await $.wait(2000);
+            await getTokenStr(baseUrl);
+            qgyToken = dealToken(tokenStr, tokenKeyStr);
+            await $.wait(2000);
+            await qgyInviteAssist(baseUrl,qgyToken,AuthorinviteCode[i-1])
+        }
+    }
+
+    await getQgyInfo(baseUrl);
+
     if (qgyProcess !== 'NaN%') {
-        if (leftEnergyBall > 0) {
-            for (var i = 1; i <= leftEnergyBall; i++) {
-                DoubleLog(`\n 开始第 ${i} 次能量加速！`);
+        if (leftEnergyNum > 0) {
+            var leftEnergyTimes = Math.ceil(leftEnergyNum / 20);;
+            console.log(`>可以加能量【${leftEnergyTimes}】次`);
+            for (var i = 1; i <= leftEnergyTimes; i++) {
+                console.log(`>>开始第 ${i} 次能量加速！`);
                 try {
+                    await getTokenKeyStr(baseUrl);
+                    await $.wait(2000);
                     await getTokenStr(baseUrl);
                     await $.wait(2000);
                     qgyToken = dealToken(tokenStr, tokenKeyStr);
-                    await useEnergyBall(baseUrl, qgyToken)
+                    await feed(baseUrl, qgyToken)
                 } catch (e) {
-                    DoubleLog(`\n 能量加速: ❌ , 加速异常！${e}`);
+                    console.log(`>能量加速: 加速异常❌！${e}`);
                 }
             }
-
         } else {
-            DoubleLog('\n 能量加速: ❌ , 能量不足跳过加速')
+            console.log('>能量不足跳过加速❌')
         }
 
     } else {
-        DoubleLog('\n 嫩青果园: ❌ , 您还是先去种植把！')
+        console.log('>您还是先去种植把！❌')
     }
+    await qgyFriendList(baseUrl)
+    if (QGY_canSteal.length >0){
+        for(var i=0;i<QGY_canSteal.length;i++){
+            await getTokenKeyStr(baseUrl);
+            await $.wait(2000);
+            await getTokenStr(baseUrl);
+            await $.wait(2000);
+            qgyToken = dealToken(tokenStr, tokenKeyStr);
+            var cid = QGY_canSteal[i]
+            await qgySteal(qgyToken,cid)
+        }
+        await $.wait(2000);
+    }
+
     return true;
+}
+
+async function QGY_help(num){
+    console.log('\n====== 开始嫩青果园本地互助 ======')
+    qgyUrl = 'https://89420.activity-20.m.duiba.com.cn/projectx/p124e3402/index.html?appID=89420';
+    await loginFreePlugin(qgyUrl);
+    await $.wait(3000)
+    if (loginUrl == "") {
+        Log(`账号【${num}】登录青果园异常❌，自动跳过任务！`);
+        return false;
+    }
+    await setCookies();
+    await $.wait(3000);
+    if (gameCookie == "") {
+        Log(`账号【${num}】cookies异常❌，自动跳过任务！`);
+        return false;
+    }
+    var urlMatch = qgyUrl.match('([^/]+)/?$');
+    var baseUrl = qgyUrl.replace(urlMatch[0], '');
+    await getTokenKeyStr(baseUrl);
+    await $.wait(2000);
+    if (QGY_inviteCode){
+            console.log('当前全部邀请码：'+QGY_inviteCode)
+            for(var i = 1;i <= QGY_inviteCode.length;i++){
+                await $.wait(2000);
+                await getTokenStr(baseUrl);
+                qgyToken = dealToken(tokenStr, tokenKeyStr);
+                await $.wait(2000);
+                await qgyInviteAssist(baseUrl,qgyToken,QGY_inviteCode[i-1])
+            }
+    }
 }
 /**
  * 获取token
@@ -780,7 +957,7 @@ async function getTokenStr(baseUrl) {
             try {
                 tokenStr = response.data.data;
             } catch (e) {
-                DoubleLog(`\n 获取任务: ❌ ，获取失败：${JSON.stringify(response.data)}，原因：${e}`)
+                console.log(`获取任务: ❌ ，获取失败：${JSON.stringify(response.data)}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -792,11 +969,13 @@ async function getTokenStr(baseUrl) {
         });
     })
 }
+
 /**
  * 青果园签到检查
  * @returns {Promise<unknown>}
  */
 async function qgyCheckQuery(baseUrl) {
+    console.log('====== 查询青果园签到状态 ======')
     qgySignFlag = false;
     return new Promise((resolve) => {
         var url = baseUrl + 'checkin_1/query.do';
@@ -804,7 +983,7 @@ async function qgyCheckQuery(baseUrl) {
         var options = {
             method: 'GET',
             url: url,
-            params: {intervalType: '0', user_type: '1', is_from_share: '1', _t: timestampMs()},
+            params: {_t: timestampMs()},
             headers: {
                 cookie: gameCookie,
                 Host: host,
@@ -825,7 +1004,7 @@ async function qgyCheckQuery(baseUrl) {
                 var data = response.data;
                 qgySignFlag = data.data.todaySign;
             } catch (e) {
-                DoubleLog(`\n 果园签到: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+                console.log(`>果园签到: 状态异常❌：${JSON.stringify(data)}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -836,14 +1015,168 @@ async function qgyCheckQuery(baseUrl) {
     })
 }
 /**
- * 创建
+ * 青果园助力
+ * @returns {Promise<unknown>}
+ */
+async function qgyInviteAssist(baseUrl,token,inviteCode) {
+    // console.log('====== 助力 ======')
+    qgySignFlag = false;
+    return new Promise((resolve) => {
+        var url = baseUrl + 'inviteAssist_1/doAssist.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'POST',
+            url: url,
+            params: {_t: timestampMs()},
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: qgyUrl + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {inviteCode:inviteCode,token:token,user_type:1,is_from_share:1,_t:timestampMs()}
+        };
+        axios.request(options).then(function (response) {
+            try {
+                var data = response.data;
+                if(data.success){
+                    if(AuthorinviteCode.includes(inviteCode)){
+                        console.log(`>助力作者成功！感谢您的支持！`)
+                    }else{
+                        console.log(`>助力【${inviteCode}】成功！`)
+                    }
+
+                }else{
+                    console.log(`>助力【${inviteCode}】失败！`)
+
+                }
+            } catch (e) {
+                console.log(`>助力异常❌：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+async function qgyFriendList(baseUrl) {
+    console.log('====== 获取好友列表 ======')
+    qgySignFlag = false;
+    return new Promise((resolve) => {
+        var url = baseUrl + 'main/friendRank.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            params: {user_type:1,is_from_share:1,_t: timestampMs()},
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: qgyUrl + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {}
+        };
+        axios.request(options).then(function (response) {
+            try {
+                var data = response.data;
+                if(data.success){
+                    var rankList = data.data.rankList
+                    for (var i=0;i>rankList.length;i++){
+                        var canSteal = rankList[i]['rankList']
+                        var cid = rankList[i]['cid']
+                        var nickname = rankList[i]['nickname']
+                        if (canSteal==true){
+                            console.log(`好友：【${nickname}】】可偷取`)
+                            QGY_canSteal.push(cid)
+                        }
+                    }
+                }else{
+                    console.log(`>获取好友列表失败！`)
+
+                }
+            } catch (e) {
+                console.log(`>获取好友列表异常❌：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+async function qgySteal(baseUrl,token,cid) {
+    console.log('====== 偷取好友能量 ======')
+    qgySignFlag = false;
+    return new Promise((resolve) => {
+        var url = baseUrl + 'main/steal.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            params: {token:token,cid:cid,user_type:1,is_from_share:1,_t: timestampMs()},
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: qgyUrl + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {}
+        };
+        axios.request(options).then(function (response) {
+            try {
+                var data = response.data;
+                if(data.success){
+                    var num = data.data.num
+                    Log(`>偷取好友成功，获得：【${num}】青果`)
+                }else{
+                    console.log(`>偷取好友列表失败！`)
+                }
+            } catch (e) {
+                console.log(`>偷取好友异常❌：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+/**
+ * 过引导
  * @param baseUrl
  * @param token
  * @returns {Promise<unknown>}
  */
-async function qgyCreateItem(baseUrl, token) {
+async function stepNewGuide(baseUrl, token) {
+    console.log('====== 检测游戏引导 ======')
     return new Promise((resolve) => {
-        var url = baseUrl + 'inviteJoinTask/createItem.do';
+        var url = baseUrl + 'newGuide_1/stepNewGuide.do';
         var host = (url.split('//')[1]).split('/')[0];
         var options = {
             method: 'POST',
@@ -868,10 +1201,21 @@ async function qgyCreateItem(baseUrl, token) {
         axios.request(options).then(function (response) {
             try {
                 var data = response.data;
-                var assistItemId = data.data.assistItemId;
-                DoubleLog(`\n 嫩青果园: ✅ ，首次进入成功,${assistItemId}`)
+                if(data.code == "200900"){
+                    console.log('>已完成游戏引导')
+                    return true
+                }
+                var allGuideSteps = data.data.allGuideSteps;
+                var alreadyGuideSteps = data.data.alreadyGuideSteps;
+                if (allGuideSteps == alreadyGuideSteps){
+                    console.log('>已完成游戏引导')
+                    return true
+                }else{
+                    console.log(`>未完成引导，当前第【${alreadyGuideSteps}】步`)
+                    return false
+                }
             } catch (e) {
-                DoubleLog(`\n 嫩青果园: ✅ ，首次进入异常：${JSON.stringify(data)}，原因：${e}`)
+                console.log(`游戏引导异常❌：${JSON.stringify(data)}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -915,13 +1259,13 @@ async function qgySign(baseUrl, token) {
                 var data = response.data;
                 if (data.hasOwnProperty('data') && data.data.hasOwnProperty('options')) {
                     qgySignFlag = true;
-                    DoubleLog(`\n 果园签到: ✅ ，成功，${data.data.options[0].optionName}`)
+                    Log(`果园签到: 成功✅，${data.data.options[0].optionName}`)
                 } else {
-                    DoubleLog(`\n 果园签到: ❌ ，失败：${JSON.stringify(data)}，原因：${e}`)
+                    Log(`果园签到: 失败❌：${JSON.stringify(data)}，原因：${e}`)
                 }
 
             } catch (e) {
-                DoubleLog(`青果园签到异常：${JSON.stringify(data)}，原因：${e}`)
+                console.log(`青果园签到异常：${JSON.stringify(data)}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -931,25 +1275,12 @@ async function qgySign(baseUrl, token) {
         });
     })
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /**
  * 获取每日阅读地址
  * @returns {Promise<unknown>}
  */
 async function getMrYdUrl() {
+    console.log('====== 获取每日阅读地址 ======')
     return new Promise((resolve) => {
         var options = {
             method: 'GET',
@@ -974,12 +1305,12 @@ async function getMrYdUrl() {
                     var title = data.rows[i]["title"];
                     if (url.indexOf('https') >= 0 && title.indexOf('每日阅读') >= 0) {
                         mrYdUrl = url;
-                        //log(`获取${title}地址成功`);
+                        //log(`获取${title}地址成功✅`);
                         return
                     }
                 }
             } catch (e) {
-                log(`获取每日阅读异常：${data}，原因：${e}`)
+                log(`获取每日阅读异常❌：${data}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -989,7 +1320,6 @@ async function getMrYdUrl() {
         });
     })
 }
-
 /**
  * 获取其他地址
  * @returns {Promise<unknown>}
@@ -1020,16 +1350,16 @@ async function getOtherUrl() {
                     var manuscriptId = data.rows[i]["manuscriptId"];
                     if (title.indexOf('每日答题') >= 0 && url.indexOf('https') >= 0) {
                         mrDtUrl = url+"&from=login&spm=89420.1.1.1";
-                        DoubleLog(`获取${title}地址成功`)
+                        Log(`获取${title}地址成功✅`)
                     } else if (title.indexOf('天降好礼') >= 0 && url.indexOf('https') >= 0) {
                         tjUrl = url;
-                        DoubleLog(`获取${title}地址成功`)
+                        Log(`获取${title}地址成功✅`)
                     } else if (title.indexOf('海岛游乐场') >= 0 && url.indexOf('https') >= 0) {
                         hdUrl = url;
-                        DoubleLog(`获取${title}地址成功`)
+                        Log(`获取${title}地址成功✅`)
                     } else if (title.indexOf('疯狂摇奖机') >= 0 && url.indexOf('https') >= 0) {
                         yjjUrl = url;
-                        DoubleLog(`获取${title}地址成功`)
+                        Log(`获取${title}地址成功✅`)
                     }
                 }
             } catch (e) {
@@ -1043,7 +1373,986 @@ async function getOtherUrl() {
         });
     })
 }
+/**
+ * 翻牌次数查询
+ * @returns {Promise<unknown>}
+ */
+async function fkpindex(baseUrl) {
+    return new Promise((resolve) => {
+        var url = baseUrl + 'main/index.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            params: { user_type: '1', is_from_share: '1', _t: timestampMs()},
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: qgyUrl + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {}
+        };
+        axios.request(options).then(function (response) {
+            try {
+                var data = response.data;
+                drawTimes = data.data.drawTimes;
+                if (drawTimes > 0){
+                    console.log(`>可翻牌【${drawTimes}】次`)
+                    return true
+                }else{
+                    console.log(`>无翻牌次数`)
+                    return false
+                }
 
+            } catch (e) {
+                console.log(`>获取可翻牌次数失败: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+async function openBox(baseUrl,token) {
+    Log('====== 开始开宝箱  ======')
+    return new Promise((resolve) => {
+        var url = baseUrl + 'main/openBox.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            params: { token: token, user_type: '1', is_from_share: '1', _t: timestampMs()},
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: qgyUrl + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {}
+        };
+        axios.request(options).then(function (response) {
+            try {
+                var data = response.data;
+                if (data.code == "500009"){
+                    Log(`开宝箱次数不足`);
+                    return
+                }
+                if (data.data.prizeName){
+                     let prizeName = data.data.prizeName;
+                    Log(`开宝箱获得：【${prizeName}】`)
+                }else if(data.message){
+                    Log(data.message)
+                }else{
+                    console.log(data)
+                }
+
+                return drawTimes
+            } catch (e) {
+                console.log(`开宝箱失败: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+async function fkp_draw(baseUrl,token) {
+    Log('====== 开始翻牌  ======')
+    return new Promise((resolve) => {
+        var url = baseUrl + 'main/draw.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            params: { place: 1, token: token, user_type: '1', is_from_share: '1', _t: timestampMs()},
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: qgyUrl + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {}
+        };
+        axios.request(options).then(function (response) {
+            try {
+                var data = response.data;
+                if (data.data.prizeId){
+                     let prizeId = data.data.prizeId;
+                    Log(`翻牌获得：【${prizeId}】`)
+                }else if(data.message){
+                    Log(data.message)
+                }else{
+                    console.log(data)
+                }
+
+                return drawTimes
+            } catch (e) {
+                console.log(`翻牌失败: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+/**
+ * 获取翻卡牌html
+ * @returns {Promise<unknown>}
+ */
+async function getFKPHtml() {
+    return new Promise((resolve) => {
+        var url = FKP_URL + '&from=login&spm=89420.1.1.1';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: FKP_URL + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {}
+        };
+        axios.request(options).then(function (response) {
+            FKPHtml = response.data;
+            console.log(FKPHtml)
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+/**
+ * 找爱游戏
+ * @returns {Promise<unknown>}
+ */
+async function loveGame_gameIndex(baseUrl,Token) {
+    console.log('====== 访问找爱游戏 ======')
+    return new Promise((resolve) => {
+        var url = baseUrl + 'loveGame/gameIndex.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            params: { token:Token,user_type: '1', is_from_share: '1', _t: timestampMs()},
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: FKP_URL + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {}
+        };
+        axios.request(options).then(function (response) {
+
+            try {
+                var data = response.data;
+                // console.log(data)
+                lessGameCount = data.data.lessGameCount;
+                downTime = data.data.downTime;
+                console.log(`可参与找爱游戏次数：${lessGameCount}次`);
+                if (downTime != null){
+                    lessGameCount = 1
+                }else{
+                   downTime = 0
+                }
+
+
+            } catch (e) {
+                console.log(`获取游戏次数失败: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+/**
+ * 找爱游戏
+ * @returns {Promise<unknown>}
+ */
+async function loveGame_startGame(baseUrl,Token) {
+    console.log('====== 开始获取找爱游戏ID ======')
+    return new Promise((resolve) => {
+        var url = baseUrl + 'loveGame/startGame.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            params: { token:Token,user_type: '1', is_from_share: '1', _t: timestampMs()},
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: FKP_URL + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {}
+        };
+        axios.request(options).then(function (response) {
+
+            try {
+                var data = response.data;
+                if(data.code == "500004"){
+                    loveGame_recordId = ''
+                    console.log(`>游戏次数不足`)
+                    $.wait(1)
+                }else{
+                    loveGame_recordId = data.data.recordId;
+                    console.log(`>获取游戏ID成功：${loveGame_recordId}`)
+                }
+
+            } catch (e) {
+                console.log(`>获取游戏ID失败: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+/**
+ * 找爱游戏
+ * @returns {Promise<unknown>}
+ */
+async function loveGame_submitGame(baseUrl,Token) {
+    return new Promise((resolve) => {
+        var url = baseUrl + 'loveGame/submitGame.do';
+        var host = (url.split('//')[1]).split('/')[0];
+
+        var req_time = timestampMs()
+        // console.log(loveGame_recordId)
+        // console.log(req_time)
+        var req_sign = `recordId=${loveGame_recordId}&score=3&time=${req_time}&salt=9m9shb1mskjam1`
+        // console.log(req_sign)
+        req_sign = MD5Encrypt(req_sign)
+        // console.log(req_sign)
+        var options = {
+            method: 'GET',
+            url: url,
+            params: { recordId:loveGame_recordId,token:Token,sign:req_sign,user_type: '1',score: '3', is_from_share: '1',time: req_time, _t: timestampMs()},
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: FKP_URL + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {}
+        };
+        axios.request(options).then(function (response) {
+
+            let prizeCount;
+            try {
+                var data = response.data;
+
+                if (data.success){
+                    prizeCount = data.data.prizeCount;
+                    Log(`>获得翻牌机会：${prizeCount}✅`)
+                }else{
+                    Log(`>提交游戏结果失败: ❌`)
+                }
+
+            } catch (e) {
+                console.log(`>提交游戏结果失败: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+async function pointRain_gameIndex(baseUrl,Token) {
+    console.log('====== 访问积分雨活动页 ======')
+    return new Promise((resolve) => {
+        var url = baseUrl + 'points/index.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            params: { token:Token,user_type: '1', is_from_share: '1', _t: timestampMs()},
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: JFY_URL,
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {}
+        };
+        axios.request(options).then(function (response) {
+
+            try {
+                var data = response.data;
+                // console.log(data)
+                pointRain_times = data.data.times;
+                activityStatus = data.data.activityStatus;
+                if (activityStatus != '2'){
+                    pointRain_activityStatus = false;
+                    console.log(`>积分雨活动结束❌`);
+                }else{
+                    pointRain_activityStatus = true;
+                    console.log(`>可参与积分雨次数：${pointRain_times}次`);
+                }
+
+
+
+            } catch (e) {
+                console.log(`获取游戏次数失败: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+async function pointRain_startGame(baseUrl,Token) {
+    console.log('====== 开始积分雨游戏 ======')
+    return new Promise((resolve) => {
+        var url = baseUrl + 'points/start.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            // token=p7f4e9c7&user_type=1&is_from_share=1&_t=1715620488721
+            params: { token:Token,user_type: '1', is_from_share: '1', _t: timestampMs()},
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: FKP_URL + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {}
+        };
+        axios.request(options).then(function (response) {
+
+            try {
+                var data = response.data;
+                // console.log(data)
+                pointRain_startId = data.data.startId;
+                console.log(`获取游戏ID成功：${pointRain_startId}`)
+            } catch (e) {
+                console.log(`获取游戏ID失败: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+/**
+ * 找爱游戏
+ * @returns {Promise<unknown>}
+ */
+async function pointRain_submitGame(baseUrl,Token) {
+    console.log('====== 提交积分雨分数 ======')
+    return new Promise((resolve) => {
+        var url = baseUrl + 'points/submit.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        // console.log(pointRain_startId)
+        // console.log(req_time)score startId ulugE8zIZeTU3tDNKtohw false
+        var score =randomInt(350, 400)
+        var req_sign = `${score}${pointRain_startId}ulugE8zIZeTU3tDNKtohwfalse`
+        // console.log(req_sign)
+        req_sign = MD5Encrypt(req_sign)
+        // console.log(req_sign)
+        var options = {
+            method: 'GET',
+            url: url,
+            // score=224&extra=false&startId=723246932&sign=c55b7c0cf24b4b38d08c8e3ca510409e&token=p0fd5174&user_type=1&is_from_share=1&_t=1715621049442
+            params: { score: score,extra: false,startId:pointRain_startId,sign:req_sign,token:Token,user_type: '1', is_from_share: '1', _t: timestampMs()},
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: FKP_URL + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {}
+        };
+        axios.request(options).then(function (response) {
+            try {
+                var data = response.data;
+                var points = data.data.points;
+                Log(`>获得：${points}积分`)
+            } catch (e) {
+                console.log(`提交游戏结果失败: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+async function DO_FKP(num) {
+    console.log('\n--------------------开始翻卡牌活动----------------------')
+    FKP_URL= 'https://89420.activity-20.m.duiba.com.cn/projectx/p9027e011/index.html?appID=89420'
+    await loginFreePlugin(FKP_URL);
+    await $.wait(2000)
+    if (loginUrl == "") {
+        Log(`账号【${num}】登录翻卡牌异常❌，自动跳过任务！`);
+        return false;
+    }
+    await setCookies();
+    await $.wait(2000);
+    if (gameCookie == "") {
+        Log(`账号【${num}】cookies异常❌，自动跳过任务！`);
+        return false;
+    }
+
+    var urlMatch = FKP_URL.match('([^/]+)/?$');
+    var baseUrl = FKP_URL.replace(urlMatch[0], '');
+    await $.wait(2000);
+    await fkpindex(baseUrl);
+
+    await getTokenKeyStr(baseUrl);
+    await getTokenStr(baseUrl);
+    await loveGame_gameIndex(baseUrl, dealToken(tokenStr, tokenKeyStr))
+    // console.log(lessGameCount)
+    await $.wait(2000);
+    while (lessGameCount != 0){
+        //①每日首次登录活动获得1次游戏机会，通关后获得1次免费翻卡牌机会；
+        //②完成首次通关，倒计时30秒后获得1次游戏机会，通关获得1次免费翻卡牌机会；
+        //③完成第2次通关，倒计时1分钟后获得1次机会，通关后获得1次免费翻卡牌机会；
+        //④完成第3次通关，倒计时3分钟后获得1次机会，通关后获得1次免费翻卡牌机会；
+        //⑤完成第4次通关，倒计时5分钟后获得1次机会，通关后获得1次免费翻卡牌机会。
+
+        console.log('====== 开始找爱游戏 ======')
+
+        await getTokenStr(baseUrl);
+        await $.wait(2000);
+        let Token = dealToken(tokenStr, tokenKeyStr);
+        await loveGame_startGame(baseUrl, Token)
+        if (loveGame_recordId!=''){
+            await getTokenStr(baseUrl);
+            await $.wait(2000);
+            let Token = dealToken(tokenStr, tokenKeyStr);
+            await loveGame_submitGame(baseUrl, Token)
+        }
+        await $.wait(2000);
+        await getTokenStr(baseUrl);
+        await $.wait(2000);
+        await loveGame_gameIndex(baseUrl, dealToken(tokenStr, tokenKeyStr))
+
+        await $.wait(2000);
+        if (downTime!=0){
+            console.log(`>暂停${downTime+5000}毫秒秒可继续游戏`)
+            await $.wait(downTime+5000);
+        }
+
+
+    }
+
+    await fkpindex(baseUrl)
+    await $.wait(2000);
+    if(drawTimes > 0){
+        for (var i=1;i<=drawTimes;i++){
+            console.log(`开始第【${i}】次翻牌`)
+            await getTokenKeyStr(baseUrl);
+            await getTokenStr(baseUrl);
+            await $.wait(2000);
+            await fkp_draw(baseUrl,dealToken(tokenStr, tokenKeyStr))
+        }
+    }
+    await getTokenKeyStr(baseUrl);
+    await getTokenStr(baseUrl);
+    await $.wait(2000);
+    await openBox(baseUrl,dealToken(tokenStr, tokenKeyStr))
+
+
+}
+async  function DO_PointRain(){
+    console.log('\n--------------------开始积分雨活动----------------------')
+    JFY_URL= 'https://89420.activity-20.m.duiba.com.cn/projectx/p03c58ec7/index.html?appID=89420'
+    urlMatch = JFY_URL.match('([^/]+)/?$');
+    baseUrl = JFY_URL.replace(urlMatch[0], '');
+    // console.log(baseUrl)
+    await loginFreePlugin(JFY_URL);
+    await $.wait(3000)
+    if (loginUrl == "") {
+        Log(`账号【${num}】登录积分雨异常❌，自动跳过任务！`);
+        return false;
+    }
+    await setCookies();
+    await $.wait(3000);
+    if (gameCookie == "") {
+        Log(`账号【${num}】积分雨cookies异常❌，自动跳过任务！`);
+        return false;
+    }
+    await $.wait(2000);
+    await getTokenKeyStr(baseUrl);
+    await getTokenStr(baseUrl);
+    await $.wait(2000);
+    await pointRain_gameIndex(baseUrl, dealToken(tokenStr, tokenKeyStr))
+    if (!pointRain_activityStatus){
+        return false;
+    }
+    if (pointRain_times!=0){
+        console.log('开始积分雨游戏')
+        await $.wait(2000);
+        await getTokenKeyStr(baseUrl);
+        await $.wait(2000);
+        await getTokenStr(baseUrl);
+        await $.wait(2000);
+        await pointRain_startGame(baseUrl, dealToken(tokenStr, tokenKeyStr))
+        console.log('等待20秒提交分数')
+        await $.wait(1000*20);
+        if(pointRain_startId != '' ||pointRain_startId != undefined){
+            // await getTokenKeyStr(baseUrl);
+            await $.wait(2000);
+            await getTokenStr(baseUrl);
+            await $.wait(2000);
+            await pointRain_submitGame(baseUrl, dealToken(tokenStr, tokenKeyStr))
+        }
+
+    }
+
+
+
+}
+
+async  function DO_Jump(){
+    console.log('\n--------------------开始跳一跳游戏----------------------')
+    TYT_URL= 'https://89420.activity-20.m.duiba.com.cn/projectx/p60459935/index.html?appID=89420'
+    let urlMatch = TYT_URL.match('([^/]+)/?$');
+    let baseUrl = TYT_URL.replace(urlMatch[0], '');
+    // console.log(baseUrl)
+    await loginFreePlugin(TYT_URL);
+    await $.wait(3000)
+    if (loginUrl == "") {
+        Log(`账号【${num}】登录跳一跳异常❌，自动跳过任务！`);
+        return false;
+    }
+    await setCookies();
+    await $.wait(3000);
+    if (gameCookie == "") {
+        Log(`账号【${num}】跳一跳cookies异常❌，自动跳过任务！`);
+        return false;
+    }
+
+    await $.wait(2000);
+    await Jump_creditsCost(baseUrl)
+    if (Jump_creditsCostId != ''){
+        await $.wait(2000);
+        await Jump_queryStatus(baseUrl,Jump_creditsCostId)
+        if (Jump_costResult == true){
+            await $.wait(2000);
+            await getTokenKeyStr(baseUrl);
+            await getTokenStr(baseUrl);
+            await Jump_start(baseUrl,dealToken(tokenStr, tokenKeyStr),Jump_creditsCostId)
+            if (Jump_startId != ''){
+
+                while (Jump_PKstatus == false){
+                    await Jump_queryPkStatus(baseUrl,Jump_startId)
+                    await $.wait(1000);
+                }
+
+            console.log('等待30秒提交分数')
+            await $.wait(1000*30);
+            await getTokenStr(baseUrl);
+            await Jump_submit(baseUrl,dealToken(tokenStr, tokenKeyStr))
+
+            }
+
+
+
+
+
+
+        }
+    }
+
+}
+
+async function Jump_creditsCost(baseUrl) {
+    console.log('====== 开始创建跳一跳订单 ======')
+    return new Promise((resolve) => {
+        var url = baseUrl + 'credits/creditsCost.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            // token=p7f4e9c7&user_type=1&is_from_share=1&_t=1715620488721
+            params: {
+                toPlaywayId: 'matching',
+                toActionId: 'start',
+                credits: 10,
+                desc: 'sub_credits_desc',
+                user_type: 1,
+                is_from_share:1,
+                _t: timestampMs()
+            },
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: TYT_URL + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {
+            }
+        };
+        axios.request(options).then(function (response) {
+
+            try {
+                var data = response.data;
+                // console.log(data)
+                if (data.success) {
+                    Jump_creditsCostId = data.data
+                    console.log(`获取订单ID成功：${Jump_creditsCostId}`)
+                }
+
+
+            } catch (e) {
+                console.log(`获取游戏ID失败: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+
+async function Jump_queryStatus(baseUrl,ticketNum) {
+    console.log('====== 开始提交跳一跳订单 ======')
+    return new Promise((resolve) => {
+        var url = baseUrl + 'credits/queryStatus.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            // credits/queryStatus.do?ticketNum=p604599358ef4ba9928d241ed278c33e&user_type=1&is_from_share=1&_t=1716222238997
+            params: {
+                ticketNum: ticketNum,
+                user_type: 1,
+                is_from_share:1,
+                _t: timestampMs()
+            },
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: TYT_URL + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {
+            }
+        };
+        axios.request(options).then(function (response) {
+            try {
+                var data = response.data;
+                console.log(data)
+                if (data.success) {
+                    console.log(`订单成功`)
+                    Jump_costResult = true
+
+                }else{
+                    console.log(`订单失败❌`)
+                    Jump_costResult = false
+                }
+            } catch (e) {
+                console.log(`获取游戏ID失败: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+                Jump_costResult = false
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+
+async function Jump_start(baseUrl,token,ticketNum) {
+    console.log('====== 开始跳一跳游戏 ======')
+    return new Promise((resolve) => {
+        var url = baseUrl + 'matching/start.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            // matching/start.do?ticketNum=p604599358ef4ba9928d241ed278c33e&token=pc5f12d2&user_type=1&is_from_share=1&_t=1716222239241
+            params: {
+                ticketNum: ticketNum,
+                user_type: 1,
+                token: token,
+                is_from_share:1,
+                _t: timestampMs()
+            },
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: TYT_URL + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {
+            }
+        };
+        axios.request(options).then(function (response) {
+            try {
+                var data = response.data;
+                console.log(data)
+                if (data.success) {
+                    Jump_startId = data.data.startId
+                    console.log(`开始跳一跳游戏成功,ID:【${Jump_startId}】`)
+                    return true
+                }else{
+                    console.log(`开始跳一跳游戏失败❌`)
+                    return false
+                }
+            } catch (e) {
+                console.log(`开始跳一跳游戏失败: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+                return false
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+
+async function Jump_queryPkStatus(baseUrl,startId) {
+    console.log('====== 开始匹配对手 ======')
+    return new Promise((resolve) => {
+        var url = baseUrl + 'matching/queryPkStatus.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            // https://89420.activity-20.m.duiba.com.cn/projectx/p60459935/matching/queryPkStatus.do?startId=4116743840_1716231400126&user_type=1&is_from_share=1&_t=1716231389780
+            params: {
+                startId: startId,
+                user_type: 1,
+                is_from_share:1,
+                _t: timestampMs()
+            },
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: TYT_URL + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {
+            }
+        };
+        axios.request(options).then(function (response) {
+            try {
+                var data = response.data;
+                console.log(data)
+                if (data.success) {
+                    if (data.data.status == '2'){
+                        console.log(`匹配对手成功,`)
+                        Jump_PKstatus = true
+                        return true
+                    }else{
+                        console.log(`匹配对手失败❌`)
+                        Jump_PKstatus = false
+                    }
+
+                }else{
+                    console.log(`匹配对手失败❌`)
+                    Jump_PKstatus = false
+                    return false
+                }
+            } catch (e) {
+                console.log(`开始跳一跳游戏失败: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+                Jump_PKstatus = false
+                return false
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
+
+
+async function Jump_submit(baseUrl,startId) {
+    console.log('====== 开始跳一跳游戏 ======')
+    return new Promise((resolve) => {
+        var url = baseUrl + 'matching/submit.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var currScore = randomInt(350, 400)
+        // startId+currScore+'1'+timestampMs()+'duibatiaoyitiao'
+        t = timestampMs()
+        var sign = MD5Encrypt(`${startId}${currScore}1${t}duibatiaoyitiao`)
+        console.log(`签名数据：【${startId}${currScore}1${timestampMs()}duibatiaoyitiao】`)
+        console.log(`SIGN：【${sign}】`)
+        var options = {
+            method: 'POST',
+            url: url,
+            // matching/start.do?ticketNum=p604599358ef4ba9928d241ed278c33e&token=pc5f12d2&user_type=1&is_from_share=1&_t=1716222239241
+            params: {
+                _t: t
+            },
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, t, trandom).toLowerCase(),
+                'user-timestamp': t,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: TYT_URL + '&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
+            },
+            data: {
+                startId: startId,
+                score: currScore,
+                type: 1,
+                timestamp: t,
+                sign: sign,
+                token: 1,
+                user_type: 1,
+                is_from_share:1
+            }
+        };
+        axios.request(options).then(function (response) {
+            try {
+                var data = response.data;
+                console.log(data)
+                // if (data.success) {
+                //     Jump_startId = data.data.startId
+                //     console.log(`开始跳一跳游戏成功,ID:【${Jump_startId}】`)
+                //     return true
+                // }else{
+                //     console.log(`开始跳一跳游戏失败❌`)
+                //     return false
+                // }
+            } catch (e) {
+                console.log(`开始跳一跳游戏失败: ❌ , 状态异常：${JSON.stringify(data)}，原因：${e}`)
+                return false
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+}
 
 
 
@@ -1055,8 +2364,6 @@ async function getAnswerLists() {
     answerLists = JSON.parse('{"1":1,"2":1,"3":1,"4":1,"5":4,"6":1,"7":1,"8":1,"9":1,"10":1,"11":1,"12":1,"13":2,"14":1,"15":2,"16":1,"17":2,"18":2,"19":1,"20":1,"21":4,"22":1,"23":4,"24":1,"25":3,"26":1,"27":4,"28":1,"29":4,"30":4,"31":1,"32":4,"33":1,"34":1,"35":1,"36":1,"37":4,"38":1,"39":3,"40":4,"41":2,"42":1,"43":2,"44":4,"45":4,"46":2,"47":1,"48":1,"49":1,"50":2,"51":4,"52":4,"53":1,"54":3,"55":3,"56":4,"57":4,"58":4,"59":1,"60":4,"61":1,"62":1,"63":1,"64":2,"65":1,"66":3,"67":1,"68":1,"69":4,"70":4,"71":4,"72":1,"73":4,"74":2,"75":4,"76":4,"77":4,"78":1,"79":2,"80":1,"81":2,"82":3,"83":3,"84":4,"85":1,"86":2,"87":3,"88":2,"89":4,"90":2,"91":4,"92":3,"93":4,"94":2,"95":3,"96":2,"97":3,"98":2,"99":4,"100":4,"101":4,"102":3,"103":4,"104":4,"105":4,"106":4}');
     return true;
 }
-
-
 
 /**
  * 获取签到信息
@@ -1101,12 +2408,12 @@ async function getSignInfo(timeout = 2000) {
                             }
                         }
                     }
-                    DoubleLog(`查询签到信息成功`)
+                    console.log(`查询签到信息成功✅`)
                 } else {
-                    DoubleLog(`查询签到信息失败，原因是：${data}`)
+                    console.log(`查询签到信息失败❌，原因是：${data}`)
                 }
             } catch (e) {
-                DoubleLog(`查询签到信息异常：${data}，原因：${e}`)
+                console.log(`查询签到信息异常❌：${data}，原因：${e}`)
             } finally {
                 resolve();
             }
@@ -1138,12 +2445,12 @@ async function dbInterface(timeout = 2000) {
             try {
                 let result = JSON.parse(data);
                 if (result.hasOwnProperty('flag') && result.flag == "T") {
-                    //DoubleLog(`接口${result.msg}`)
+                    //Log(`接口${result.msg}`)
                 } else {
-                    DoubleLog(`查询接口失败，原因是：${data}`)
+                    console.log(`查询接口失败❌，原因是：${data}`)
                 }
             } catch (e) {
-                DoubleLog(`查询接口异常：${data}，原因：${e}`)
+                console.log(`查询接口异常❌：${data}，原因：${e}`)
             } finally {
                 resolve();
             }
@@ -1151,26 +2458,20 @@ async function dbInterface(timeout = 2000) {
     })
 }
 
-
-
-
-
-
-
 /**
  * 能力加速
  * @param baseUrl
  * @param token
  * @returns {Promise<unknown>}
  */
-async function useEnergyBall(baseUrl, token) {
+async function feed(baseUrl, token) {
     return new Promise((resolve) => {
-        var url = baseUrl + 'game/useEnergyBall.do';
+        var url = baseUrl + 'main/feed.do';
         var host = (url.split('//')[1]).split('/')[0];
         var options = {
-            method: 'POST',
+            method: 'GET',
             url: url,
-            params: {_t: timestampMs()},
+            params: {token:token,user_type:1,is_from_share:1,_t: timestampMs()},
             headers: {
                 cookie: gameCookie,
                 Host: host,
@@ -1179,22 +2480,19 @@ async function useEnergyBall(baseUrl, token) {
                 Connection: 'keep-alive',
                 Accept: '*/*',
                 'User-Agent': getUA(),
-                Referer: qgyUrl + '&from=login&spm=89420.1.1.1',
+                Referer: qgyUrl + '&shareCode=BZZWJJ&from=login&spm=89420.1.1.1',
                 'Accept-Language': 'zh-CN,zh-Hans;q=0.9'
             },
             data: {
-                token: token,
-                user_type: '1',
-                is_from_share: '1',
-                _t: timestampMs()
+
             }
         };
         axios.request(options).then(function (response) {
             try {
                 var data = response.data;
-                DoubleLog(`\n 能量加速: ✅ ，加速成功`)
+                console.log(`>能量加速成功✅`)
             } catch (e) {
-                DoubleLog(`\n 能量加速: ❌ ，失败，原因：${data.message}`)
+                console.log(`>能量失败❌ ，原因：${data.message}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -1205,13 +2503,14 @@ async function useEnergyBall(baseUrl, token) {
     })
 }
 async function collectCoconut(baseUrl, token) {
+    console.log('====== 果园收取青果 ======')
     return new Promise((resolve) => {
-        var url = baseUrl + 'game/collectCoconut.do';
+        var url = baseUrl + '/main/charge.do';
         var host = (url.split('//')[1]).split('/')[0];
         var options = {
             method: 'POST',
             url: url,
-            params: {_t: timestampMs()},
+            params: {token:token,user_type:1,is_from_share:1,_t: timestampMs()},
             headers: {
                 cookie: gameCookie,
                 Host: host,
@@ -1220,22 +2519,18 @@ async function collectCoconut(baseUrl, token) {
                 Connection: 'keep-alive',
                 Accept: '*/*',
                 'User-Agent': getUA(),
-                Referer: qgyUrl + '&from=login&spm=89420.1.1.1',
+                Referer: qgyUrl + '&shareCode=BZZWJJ&from=login&spm=89420.1.1.1',
                 'Accept-Language': 'zh-CN,zh-Hans;q=0.9'
             },
             data: {
-                token: token,
-                user_type: '1',
-                is_from_share: '1',
-                _t: timestampMs()
             }
         };
         axios.request(options).then(function (response) {
             try {
                 var data = response.data;
-                DoubleLog(`\n 果园收取: ✅ ，收取成功：${data.data.quantity}`)
+                Log(`>收取青果成功✅`)
             } catch (e) {
-                DoubleLog(`\n 果园收取: ❌ ，收取失败，原因：${data.message}`)
+                console.log(`>收取青果失败❌ ，原因：${data.message}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -1252,8 +2547,9 @@ async function collectCoconut(baseUrl, token) {
  * @returns {Promise<unknown>}
  */
 async function getQgyInfo(baseUrl) {
+    console.log('====== 获取果园信息 ======')
     return new Promise(async(resolve) => {
-        var url = baseUrl + 'game/index.do';
+        var url = baseUrl + 'main/index.do';
         var host = (url.split('//')[1]).split('/')[0];
         var options = {
             method: 'GET',
@@ -1266,7 +2562,7 @@ async function getQgyInfo(baseUrl) {
                 Connection: 'keep-alive',
                 Accept: '*/*',
                 'User-Agent': getUA(),
-                Referer: qgyUrl + '&from=login&spm=89420.1.1.1',
+                Referer: qgyUrl + '&shareCode=BZZWJJ&from=login&spm=89420.1.1.1',
                 'Accept-Language': 'zh-CN,zh-Hans;q=0.9'
             },
             data: {}
@@ -1275,17 +2571,19 @@ async function getQgyInfo(baseUrl) {
             try {
                 var data = response.data;
                 if (data.hasOwnProperty('data') && data.data.hasOwnProperty('treeInfo')) {
-                    currentStatusHaveMillis = data.data.treeInfo.currentStatusHaveMillis;
-                    currentStatusNeedMillis = data.data.treeInfo.currentStatusNeedMillis;
-                    isTravelling = data.data.isTravelling;
-                    leftEnergyBall = data.data.leftEnergyBall
-                    qgyProcess = ((currentStatusHaveMillis / currentStatusNeedMillis) * 100).toFixed(2) + "%"
-                    DoubleLog(`\n 嫩青果园: ✅ ，青果园当前进度：${qgyProcess}，能量：${leftEnergyBall}`)
+                    energyNum = data.data.treeInfo.energyNum;
+                    upNeedNum = data.data.treeInfo.upNeedNum;
+                    isTravelling = data.data.travel;
+                    leftEnergyNum = data.data.leftEnergyNum
+                    greenFruitNum = data.data.greenFruitNum
+                    qgyProcess = ((energyNum / upNeedNum) * 100).toFixed(2) + "%"
+                    console.log(`>>>获取信息成功✅`)
+                    Log(`>当前进度：${qgyProcess}\n>能量：${leftEnergyNum}\n>青果：${greenFruitNum}`)
                 } else {
-                    DoubleLog(`\n 嫩青果园: ❌ ，青果园信息失败：${JSON.stringify(data)}`)
+                    console.log(`>获取信息失败❌：${JSON.stringify(data)}`)
                 }
             } catch (e) {
-                DoubleLog(`\n 嫩青果园: ❌ ，青果园信息异常：${JSON.stringify(data)}，原因：${e}`)
+                console.log(`>获取信息异常❌：${JSON.stringify(data)}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -1296,20 +2594,15 @@ async function getQgyInfo(baseUrl) {
     })
 
 }
-
-
-
-
-
-
 /**
  * 查询青果园任务
  * @param baseUrl
  * @returns {Promise<unknown>}
  */
 async function queryQgyTask(baseUrl) {
+    console.log('====== 获取青果园任务列表 ======')
     qgyTaskData = [];
-    var url = baseUrl + 'customTask1/queryTasks.do';
+    var url = baseUrl + 'task_1/queryTasks.do';
     var host = (url.split('//')[1]).split('/')[0];
     return new Promise((resolve) => {
         var options = {
@@ -1326,7 +2619,7 @@ async function queryQgyTask(baseUrl) {
                 Connection: 'keep-alive',
                 Accept: '*/*',
                 'User-Agent': getUA(),
-                Referer: qgyUrl + '&from=login&spm=89420.1.1.1',
+                Referer: qgyUrl + '&shareCode=BZZWJJ&from=login&spm=89420.1.1.1',
                 'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
                 'Accept-Encoding': 'gzip, deflate, br'
             },
@@ -1335,10 +2628,15 @@ async function queryQgyTask(baseUrl) {
         axios.request(options).then(function (response) {
             try {
                 var data = response.data;
-                DoubleLog(`\n 果园任务: ✅ ，获取果园任务成功，执行任务`)
-                qgyTaskData = data.data.item;
+                if (data.hasOwnProperty('data')) {
+                    console.log(`>获取果园任务列表成功✅`)
+                    qgyTaskData = data.data.item;
+                }else{
+                    console.log(`>获取果园任务列表失败❌`)
+                }
+
             } catch (e) {
-                DoubleLog(`\n 果园任务: ✅ ，获取果园任务异常：${JSON.stringify(data)}，原因：${e}`)
+                console.log(`获取果园任务列表异常❌：${JSON.stringify(data)}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -1358,9 +2656,10 @@ async function queryQgyTask(baseUrl) {
  * @param taskTitle
  * @returns {Promise<unknown>}
  */
-async function finishBrowseInfoTask(baseUrl, token, taskCode, taskTitle) {
+async function doCompleted(baseUrl, token, taskCode, taskTitle) {
+    // Log('====== 执行青果')
     return new Promise((resolve) => {
-        var url = baseUrl + 'customTask1/finishBrowseInfoTask.do';
+        var url = baseUrl + 'task_1/doCompleted.do';
         var host = (url.split('//')[1]).split('/')[0];
         var options = {
             method: 'POST',
@@ -1377,7 +2676,7 @@ async function finishBrowseInfoTask(baseUrl, token, taskCode, taskTitle) {
                 Connection: 'keep-alive',
                 Accept: '*/*',
                 'User-Agent': getUA(),
-                Referer: qgyUrl + '&from=login&spm=89420.1.1.1',
+                Referer: qgyUrl + '&shareCode=BZZWJJ&from=login&spm=89420.1.1.1',
                 'Accept-Language': 'zh-CN,zh-Hans;q=0.9'
             },
             data: {
@@ -1392,12 +2691,15 @@ async function finishBrowseInfoTask(baseUrl, token, taskCode, taskTitle) {
             try {
                 var data = response.data;
                 if (data.hasOwnProperty('success') && data.success) {
-                    DoubleLog(`\n 完成信息: ✅ ，${taskTitle}任务成功：${data.data.reward} 积分`)
+                    console.log(`>已完成【${taskTitle}】任务，获得：【${data.data.completedSize}】能量✅`)
+                    let prizePendingCode = data.data.prizePendingCode
+                    return prizePendingCode
                 } else {
-                    DoubleLog(`\n 完成信息: ❌ ，${taskTitle}任务失败：${data.message}`)
+                    console.log(`>完成【${taskTitle}】任务失败❌：${data.message}`)
+                    return ''
                 }
             } catch (e) {
-                DoubleLog(`\n 完成信息: ❌ ，任务异常：${JSON.stringify(data)}，原因：${e}`)
+                console.log(`>完成【${taskTitle}】任务异常❌：${JSON.stringify(data)}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -1414,14 +2716,16 @@ async function finishBrowseInfoTask(baseUrl, token, taskCode, taskTitle) {
  * @param baseUrl
  * @returns {Promise<unknown>}
  */
-async function newRewardInfo(baseUrl) {
+async function sendPrize(baseUrl,taskCode,PendingCode,title,qgyToken) {
+    // Log('====== 领取任务奖励 ======')
     return new Promise((resolve) => {
-        var url = baseUrl + 'customTask1/newRewardInfo.do';
+        var url = baseUrl + 'task_1/sendPrize.do?_t='+ timestampMs();
         var host = (url.split('//')[1]).split('/')[0];
         var options = {
-            method: 'GET',
+            method: 'POST',
             url: url,
-            params: {user_type: '1', is_from_share: '1', _t: timestampMs()},
+            // taskCode=browse_finishQuestion&prizePendingCode=f28349f41b7e4232ab7be68476245120&token=p78683bb&user_type=1&is_from_share=1&_t=1715794521686
+            params: {},
             headers: {
                 cookie: gameCookie,
                 Host: host,
@@ -1432,17 +2736,17 @@ async function newRewardInfo(baseUrl) {
                 Connection: 'keep-alive',
                 Accept: '*/*',
                 'User-Agent': getUA(),
-                Referer: qgyUrl + '&from=login&spm=89420.1.1.1',
+                Referer: qgyUrl + '&shareCode=BZZWJJ&from=login&spm=89420.1.1.1',
                 'Accept-Language': 'zh-CN,zh-Hans;q=0.9',
             },
-            data: {}
+            data: {taskCode: taskCode, prizePendingCode: PendingCode,token: qgyToken,user_type: 1, is_from_share: '1', _t: timestampMs()}
         };
         axios.request(options).then(function (response) {
             try {
                 var data = response.data;
-                DoubleLog(`\n 领取奖励: ✅ ，奖励领取成功。`)
+                Log(`>领取【${title}】奖励成功✅。`)
             } catch (e) {
-                DoubleLog(`\n 领取奖励: ✅ ，领取奖励失败：${JSON.stringify(data)}，原因：${e}`)
+                console.log(`>领取【${title}】奖励失败❌：${JSON.stringify(data)}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -1451,6 +2755,105 @@ async function newRewardInfo(baseUrl) {
             resolve();
         });
     })
+}
+async function get_QGY_InviteCode(baseUrl, token) {
+    // Log('====== 执行青果')
+    return new Promise((resolve) => {
+        var url = baseUrl + 'inviteAssist_1/getInviteCode.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            params: {_t: timestampMs()},
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Origin: 'https://89420.activity-20.m.duiba.com.cn',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: qgyUrl + '&shareCode=BZZWJJ&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9'
+            },
+            data: {}
+        };
+        axios.request(options).then(function (response) {
+            try {
+                var data = response.data;
+                if (data.hasOwnProperty('success') && data.success) {
+                    var inviteCode = data.data.inviteCode
+                    console.log(`>获取邀请码成功：【${inviteCode}】✅`)
+                    QGY_inviteCode.push(inviteCode)
+                    console.log('当前全部邀请码：'+QGY_inviteCode)
+                    return QGY_inviteCode
+                } else {
+                    console.log(`>完成【${taskTitle}】任务失败❌：${data.message}`)
+                    return ''
+                }
+            } catch (e) {
+                console.log(`>完成【${taskTitle}】任务异常❌：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+
+}
+
+async function QGY_giveEnergy(baseUrl, token,cid) {
+    // Log('====== 执行青果')
+    return new Promise((resolve) => {
+        var url = baseUrl + 'main/giveEnergy.do';
+        var host = (url.split('//')[1]).split('/')[0];
+        var options = {
+            method: 'GET',
+            url: url,
+            // main/giveEnergy.do?cid=4093679412&token=paeb87e2&user_type=1&is_from_share=1&_t=1715877738068
+            params: {cid:cid,token:token,user_type:1,is_from_share:1,_t: timestampMs()},
+            headers: {
+                cookie: gameCookie,
+                Host: host,
+                'user-sign': getUserSign(memberId, timestamp, trandom).toLowerCase(),
+                'user-timestamp': timestamp,
+                'user-random': trandom,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Origin: 'https://89420.activity-20.m.duiba.com.cn',
+                Connection: 'keep-alive',
+                Accept: '*/*',
+                'User-Agent': getUA(),
+                Referer: qgyUrl + '&shareCode=BZZWJJ&from=login&spm=89420.1.1.1',
+                'Accept-Language': 'zh-CN,zh-Hans;q=0.9'
+            },
+            data: {}
+        };
+        axios.request(options).then(function (response) {
+            try {
+                var data = response.data;
+                if (data.hasOwnProperty('success') && data.success) {
+                    console.log(`>赠送能量成功！(不消耗自身能量)✅`)
+
+                } else {
+                    console.log(`>赠送好友能量失败❌：${data.message}`)
+
+                }
+            } catch (e) {
+                console.log(`>完成【${taskTitle}】任务异常❌：${JSON.stringify(data)}，原因：${e}`)
+            }
+        }).catch(function (error) {
+            console.error(error);
+        }).then(res => {
+            //这里处理正确返回
+            resolve();
+        });
+    })
+
 }
 
 /**
@@ -1482,9 +2885,9 @@ async function getTokenKeyStr(baseUrl) {
         axios.request(options).then(function (response) {
             try {
                 tokenKeyStr = response.data;
-                //log(`获取tokenKey成功`)
+                log(`>获取tokenKey成功✅`)
             } catch (e) {
-                log(`获取tokenKey失败：${JSON.stringify(data)}，原因：${e}`)
+                log(`>获取tokenKey失败❌：${JSON.stringify(data)}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -1530,9 +2933,9 @@ async function startTravel(baseUrl, token) {
         axios.request(options).then(function (response) {
             try {
                 var data = response.data;
-                DoubleLog(`\n 果园旅行: ✅ ，成功${data.success}`)
+                Log(`果园旅行: 成功✅${data.success}`)
             } catch (e) {
-                DoubleLog(`\n 果园旅行: ❌ ，失败：${JSON.stringify(data)}，原因：${e}`)
+                console.log(`果园旅行: 失败❌：${JSON.stringify(data)}，原因：${e}`)
             }
         }).catch(function (error) {
             console.error(error);
@@ -1543,79 +2946,178 @@ async function startTravel(baseUrl, token) {
     })
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ============================================重写============================================ \\
-async function GetRewrite() {
-    if ($request.url.indexOf("member/api/info/?userKeys=v1.0&pageName=member-info-index-search&formName=searchForm&kwwMember.memberId") > -1) {
-        let ck = '';
-        let theRequest = new Object();
-        if ($request.url.indexOf("?") != -1) {
-            let info = $request.url.split('?');
-            let strs = info[1].split("&");
-            for (var i = 0; i < strs.length; i++) {
-                theRequest[strs[i].split("=")[0]] = unescape(strs[i].split("=")[1]);
-            }
-            ck = theRequest.memberId;
+// ============================================一对一推送============================================ \\
+async function send_wxpusher(UID, send_msg, title, help=false) {
+    const WXPUSHER = process.env.WXPUSHER || false;
+    if (WXPUSHER) {
+        console.log('>WXPUSHER变量已设置✅')
+        if (help) {
+            title += '互助';
         }
-        if (kwwUid) {
-            if (memberId.indexOf(ck) == -1) {
-                memberId = memberId + "@" + ck;
-                $.setdata(memberId, "kwwUid");
-                List = memberId.split("@");
-                $.msg(`【${$.name}】` + ` 获取第${memberId.length}个 ck 成功: ${ck} ,不用请自行关闭重写!`);
-            }
-        } else {
-            $.setdata(ck, "memberId");
-            $.msg(`【${$.name}】` + ` 获取第1个 ck 成功: ${ck} ,不用请自行关闭重写!`);
-        }
+        // console.log('\n开始wxpusher推送------>>>>');
+        // console.log(`标题：【${title}】\n内容：${send_msg}`);
+        const webapi = 'http://wxpusher.zjiecode.com/api/send/message';
+        // send_msg = send_msg.replace("\n", "<br>");
+        const tips = APP_CONFIG['GLOBAL_NTC_HTML']
+        const data = {
+            "appToken": WXPUSHER,
+            "content": `${title}<br>${send_msg}<br>${tips}`,
+            // "summary": msg.substring(0, 99), // 可选参数，默认为 msg 的前10个字符
+            "summary": title,
+            "contentType": 2,
+            "uids": [UID],
+            "url": "https://gj.cherwin.cn"
+        };
+
+        axios.post(webapi, data)
+            .then(response => {
+                if (response.data.success) {
+                    console.log(">>>一对一推送成功！✅");
+                } else {
+                    console.error(`>>>一对一推送消息发送失败❌。错误信息：${response.data.msg}`);
+                }
+            })
+            .catch(error => {
+                console.error(`>>>一对一推送发送消息时发生错误❌：${error.message}`);
+            });
+    }else{
+        console.log('>未设置WXPUSHER变量，取消一对一推送❌')
     }
 }
 
 
 // ============================================变量检查============================================ \\
-async function Envs() {
-    if (UserCookie) {
-        if (UserCookie.indexOf("@") != -1) {
-            UserCookie.split("@").forEach((item) => {
-                UserCookieArr.push(item);
-            });
-        } else if (UserCookie.indexOf("\n") != -1) {
-            UserCookie.split("\n").forEach((item) => {
-                UserCookieArr.push(item);
-            });
-        } else {
-            UserCookieArr.push(UserCookie);
+function ENV_SPLIT(input_str) {
+    var parts = [];
+    if (input_str.includes('&')) {
+        var amp_parts = input_str.split('&');
+        for (var i = 0; i < amp_parts.length; i++) {
+            if (amp_parts[i].includes('#')) {
+                var hash_parts = amp_parts[i].split('#');
+                for (var j = 0; j < hash_parts.length; j++) {
+                    parts.push(hash_parts[j]);
+                }
+            } else {
+                parts.push(amp_parts[i]);
+            }
         }
+        return parts;
+    } else if (input_str.includes('#')) {
+        var hash_parts = input_str.split('#');
+        return hash_parts;
     } else {
-        console.log(`\n 乐客播提示：系统变量未填写 lekebo_kww_Cookie`)
-        return;
+        var out_str = input_str.toString();
+        return [out_str];
     }
-    return true;
 }
+
+
+function saveUserData(fileName, newData) {
+    try {
+        let data;
+        try {
+            // 读取现有的 JSON 文件（如果存在）
+            data = JSON.parse(fs.readFileSync(fileName, 'utf8'));
+        } catch (err) {
+            // 如果文件不存在，创建所需目录并一个新的空 JSON 文件
+            if (err.code === 'ENOENT') {
+                const directory = path.dirname(fileName);
+                if (!fs.existsSync(directory)) {
+                    fs.mkdirSync(directory, { recursive: true });
+                }
+                data = {};
+            } else {
+                throw err;
+            }
+        }
+
+        // 检查是否已存在相同的键，如果存在，合并数据
+        for (const key in newData) {
+            if (newData.hasOwnProperty(key)) {
+                if (data.hasOwnProperty(key)) {
+                    // 如果键已存在，将新数据合并到现有数据中
+                    Object.assign(data[key], newData[key]);
+                } else {
+                    // 如果键不存在，直接插入新数据
+                    data[key] = newData[key];
+                }
+            }
+        }
+
+        // 将更新后的数据写入 JSON 文件
+        fs.writeFileSync(fileName, JSON.stringify(data, null, 4));
+        console.log(`数据已保存到文件 ${fileName}`);
+    } catch (err) {
+        console.error(`保存数据到 ${fileName} 时发生错误：`, err);
+    }
+}
+// 读取用户数据
+function readUserData(filename) {
+    try {
+        if (fs.existsSync(filename)) {
+            return JSON.parse(fs.readFileSync(filename, 'utf8'));
+        } else {
+            console.log(`文件 ${filename} 不存在，返回空对象`);
+            return {};
+        }
+    } catch (err) {
+        console.error(`读取 ${filename} 时发生错误：`, err);
+        return null;
+    }
+}
+async function downloadFile(fileUrl, downloadPath) {
+    try {
+        const response = await axios({
+            method: 'get',
+            url: fileUrl,
+            responseType: 'stream' // 指定响应类型为流
+        });
+        // 创建可写流，用于保存下载的文件
+        const fileStream = fs.createWriteStream(downloadPath);
+        // 监听 'data' 事件，将数据写入文件流
+        response.data.pipe(fileStream);
+        // 返回 Promise，在文件下载完成时 resolve
+        return new Promise((resolve, reject) => {
+            fileStream.on('finish', function() {
+                console.log('更新成功！✅，请重新运行脚本');
+                process.exit();
+                resolve();
+            });
+            // 监听 'error' 事件，处理错误
+            fileStream.on('error', function(err) {
+                console.error('更新失败❌，请手动更新:', error);
+                console.error('写入文件时发生错误:', err);
+                reject(err);
+            });
+        });
+    } catch (error) {
+        console.error('下载文件时发生错误:', error);
+        throw error;
+    }
+}
+async function compareVersions(localVersion, serverVersion) {
+    const localParts = localVersion.split('.'); // 将本地版本号拆分成数字部分
+    const serverParts = serverVersion.split('.'); // 将服务器版本号拆分成数字部分
+
+    for (let i = 0; i < localParts.length && i < serverParts.length; i++) {
+        const localNum = parseInt(localParts[i]);
+        const serverNum = parseInt(serverParts[i]);
+
+        if (localNum < serverNum) {
+            return true; // 当前版本低于服务器版本
+        } else if (localNum > serverNum) {
+            return false; // 当前版本高于服务器版本
+        }
+    }
+
+    // 如果上述循环没有返回结果，则表示当前版本与服务器版本的数字部分完全相同
+    if (localParts.length < serverParts.length) {
+        return true; // 当前版本位数较短，即版本号形如 x.y 比 x.y.z 低
+    } else {
+        return false; // 当前版本与服务器版本相同或更高
+    }
+}
+
 // ============================================发送消息============================================ \\
 async function SendMsg(message) {
     if (!message)
@@ -1642,19 +3144,22 @@ function addNotifyStr(str, is_log = true) {
         log(`${str}\n`)
     }
     msg += `${str}\n`
+    one_msg += `${str}\n<br>`;
 }
 /**
  * 双平台log输出
  */
-function DoubleLog(data) {
+function Log(data) {
 	if ($.isNode()) {
 		if (data) {
 			console.log(`${data}`);
-			msg += `${data}`;
+			msg += `${data}\n`;
+            one_msg += `${data}<br>`;
 		}
 	} else {
 		console.log(`${data}`);
-		msg += `${data}`;
+		msg += `${data}\n`;
+        one_msg += `${data}<br>`;
 	}
 }
 function randomNum(min, max) {
@@ -1671,7 +3176,7 @@ function delay() {
     if (time > 30000) {// 大于30s重新生成
         return delay();
     } else {
-        console.log('随机延时：', `${time}ms, 避免大家运行时间一样`)
+        console.log('随机延时1-30s避免大家运行时间一样：', `本次延时：${time}ms`)
         return time;// 小于30s，返回
     }
 }
@@ -1693,7 +3198,9 @@ function dealToken(tokenStr, tokenKeyStr) {
     eval(babelStr);
     let ast = parser.parse(babelStr);
     let funcStr = ast.program.body[0].id.name;
- let res = tdom.window[funcStr]();
+    // console.log(ast.program.body);
+    let res = tdom.window[funcStr]();
+    // console.log(tdom.window);
     tdom.window.close();
     //console.log(window['pf8b6b']);
     return res;
@@ -1912,15 +3419,29 @@ function modify() {
 /**
  * 获取远程版本
  */
+
 function getVersion(timeout = 3 * 1000) {
     return new Promise((resolve) => {
         let url = {
-            url: `https://ghproxy.com/https://raw.githubusercontent.com/qq274023/lekebo/master/lekebo_kww.js`,
+            url: `https://py.cherwin.cn/CHERWIN_SCRIPT_CONFIG.json`,
         }
         $.get(url, async (err, resp, data) => {
             try {
-                scriptVersionLatest = data.match(/scriptVersion = "([\d\.]+)"/)[1]
-                update_data = data.match(/update_data = "(.*?)"/)[1]
+                // 解析响应数据
+                const config = JSON.parse(data);
+                // console.log(config)
+                // 获取所需的配置值
+                const newVersion = config['APP_CONFIG'][ENV_NAME]['NEW_VERSION'];
+                // console.log(newVersion)
+                const ntc = config['APP_CONFIG'][ENV_NAME]['NTC'];
+                // console.log(ntc)
+                const globalNtcHtml = config['GLOBAL_NTC_HTML'];
+                const globalNtc= config['GLOBAL_NTC'];
+                // console.log(globalNtc)
+                // 将获取到的值作为对象返回
+                APP_CONFIG ={ 'NEW_VERSION':newVersion, 'NTC':ntc, 'GLOBAL_NTC_HTML':globalNtcHtml,'GLOBAL_NTC':globalNtc }
+                resolve(APP_CONFIG);
+
             } catch (e) {
                 $.logErr(e, resp);
             } finally {
@@ -1929,7 +3450,6 @@ function getVersion(timeout = 3 * 1000) {
         }, timeout)
     })
 }
-
 /**
  * time 输出格式：1970-01-01 00:00:00
  */
