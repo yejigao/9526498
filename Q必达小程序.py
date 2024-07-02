@@ -1,6 +1,8 @@
 '''
 new Env('Q必达小程序');
-注册入口:weixin://dl/business/?t=GEK1Z5MV68f
+微信注册入口:优惠代寄，上门取件，代理火热招募中…～
+
+weixin://dl/business/?t=O4N0N4C9EMb
 账号密码登录 账号&密码多号@隔开
 '''
 import requests
