@@ -1,10 +1,11 @@
-'''
-new Env('东方棘市');
-东方棘市每日签到,分享提现后续完成可关注github
-变量格式 token#备注，多账号换行或者用@连接
-7.1号19:38更新自动提现(PS余额不满足1则不进行提现)
-7.1号22:40更新用户判断和余额错误来自@pijiu10456_S修改
-'''
+import requests
+import os
+
+#抓包域名https://ys.shajixueyuan.com/api/user_sign/sign
+#取url请求中的token，变量名：dfjsck
+#变量格式 token#备注，多账号换行或者用@连接
+
+
 def sign(token, remark):
     url = "https://ys.shajixueyuan.com/api/user_sign/sign"
     headers = {
@@ -44,10 +45,10 @@ def info(token, remark):
     response = requests.get(url, headers=headers)
     data = response.json()
     if data['code'] == 1:
-        remaining_fruits = float(data["data"]["remaining_fruits"])
+        accumulated_fruits = float(data["data"]["accumulated_fruits"])
         nickname = data["data"]["nickname"]
-        print(f"[{remark}]：当前余额: {remaining_fruits}")
-        if remaining_fruits >= 0.3:
+        print(f"[{remark}]：当前余额: {accumulated_fruits}")
+        if accumulated_fruits >= 1:
             apply(token, remark)
         else:
             print(f"[{remark}] 余额不足，无法进行提现")
@@ -62,7 +63,7 @@ def apply(token, remark):
         'token': token
     }
     data = {
-        "fruit_withdraw_amount": "0.3",
+        "fruit_withdraw_amount": "1",
         "pay_gateway": "wechat"
     }
     response = requests.post(url, json=data, headers=headers)
@@ -75,11 +76,13 @@ if __name__ == "__main__":
     if not tokens:
         print("获取账号失败，请检查配置是否正确")
     else:
+        # 将换行符替换为 @ 号，分割每个账号
         tokens_list = [token.strip() for token in tokens.replace('@', '\n').split('\n') if token.strip()]
         for index, item in enumerate(tokens_list, start=1):
             parts = item.split('#')
-            token = parts[0].strip()  
-            remark = parts[1].strip() if len(parts) > 1 else f"账号{index}"  
+            token = parts[0].strip()  # 提取 token
+            remark = parts[1].strip() if len(parts) > 1 else f"账号{index}"  # 提取备注，如果没有则用“账号X”代替
+
             print(f"===== 开始执行第 {index} 个账号任务 =====")
             print(f"账号: {remark}")
             print(f"===== 开始执行签到任务 =====")
