@@ -3,8 +3,9 @@
 # -------------------------------
 # @Author : github@wd210010 https://github.com/wd210010/just_for_happy
 # @Time : 2023/2/27 13:23
-# -------------------------------
-# cron "30 7 * * *" script-path=xxx.py,tag=匹配cron用
+# 注册地址：https://www.xkdaili.com/?ic=7dcs7wea
+邀请码：7dcs7wea-------------------------------
+# cron "30 7,22 * * *" script-path=xxx.py,tag=匹配cron用
 # const $ = new Env('星空代理签到')
 
 import requests, json 
