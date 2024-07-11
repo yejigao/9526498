@@ -2,7 +2,7 @@
 
 #   --------------------------------注释&变量区--------------------------------
 #   入口:
-#   微信打开： https://168740033-1257141735.cos-website.ap-nanjing.myqcloud.com/index.html?pid=16345
+#   微信打开： https://168750023-1257141735.cos-website.ap-nanjing.myqcloud.com/index.html?pid=16345
 #
 #   找含sx.shuxiangby.cn域名下的cookie中user_openid，uid，PHPSESSID的值
 #   user_openid=**** 只要**** 其余两项也是如此
