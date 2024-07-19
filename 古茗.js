@@ -8,7 +8,7 @@
  * @copyright: 2024 偷撸项目组保留所有权利。
  * @since: 2024-07-17
  * @env: ck变量：gmck token,多号&隔开
- * @cron: 55 11 * * *
+ * @cron: 55 11 * * 3,4,5
  */
 
 const axios = require('axios');
