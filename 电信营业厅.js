@@ -9,6 +9,8 @@ export chinaTelecomAccount="13888888888#123456"
 
 每天运行一两次
 
+拉菲修复本，别问为什么不能跑，问拉菲去，问我就被骂
+
 有问题联系3288588344
 频道：https://pd.qq.com/s/672fku8ge
 
