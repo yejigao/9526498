@@ -1,122 +1,40 @@
 /**
- * cron "54 7,15 * * *" Cheryfs.js
+ * cron "59 17 * * *" Cheryfs_Exchange.js
  * export Cheryfs='[{"accountId":"1"},{"accountId":"2"}]'
+ * export Cheryfs_Acc="0"//兑换第一个账号
+ * export Cheryfs_GIFTID="754492665391370240"//运行脚本查看
  */
-const $ = new Env('好奇车生活')
+const $ = new Env('好奇车生活兑换')
 const Cheryfs = ($.isNode() ? JSON.parse(process.env.Cheryfs) : $.getjson("Cheryfs")) || [];
+let Cheryfs_Acc = ($.isNode() ? process.env.Cheryfs_Acc : $.getdata("Cheryfs_Acc")) || 0;
+let Cheryfs_GIFTID = ($.isNode() ? process.env.Cheryfs_GIFTID : $.getdata("Cheryfs_GIFTID")) || '754492665391370240';
 let accountId = ''
-let notice = ''
-let taskItemIdArr = [{"676992242694664192":"申贷赢好礼"},{"676992618558840832":"呼唤车友 组队出行"},
-{"662736940734369792":"暖“新”见面礼"},{"662403544497803264":"购新车意向数"},{"662744551156371456":"二手车购车意向数"},
-{"662404548685488128":"分享车型周期"},{"662429433629532160":"收藏车型周期"},{"661727887220559872":"签签有礼"},{"662802360732508160":"每日抽奖"},
-{"671509580525694976":"幸运好礼 一触‘积’发"},{"662819978147287040":"车生活小程序注册"},{"662813735114530816":"车主身份认证"},
-{"662805299354165248":"逛好物兑换"},{"662805251388100608":"逛违章罚款"},{"662805189626974208":"逛维修保养"},{"662805119309467648":"逛附近加油站"},
-{"662794321581330432":"逛选二手车"},{"662794237938524160":"逛选新车"},{"662794135429734400":"逛汽车回收"},{"662793252641984512":"逛本地车服"}]
-let time_out = 60000
 !(async () => {
-    if (typeof $request != "undefined") {
-        await getCookie();
-    } else {
-        await main();
-    }
+    await main();
 })().catch((e) => {$.log(e)}).finally(() => {$.done({});});
 
 async function main() {
     console.log('作者：@xzxxn777\n频道：https://t.me/xzxxn777\n群组：https://t.me/xzxxn7777\n自用机场推荐：https://xn--diqv0fut7b.com\n')
-    for (const item of Cheryfs) {
-        accountId = item.accountId;
-        console.log(`用户：${accountId}开始任务`)
-        console.log('开始签到')
-        let sign = await signGet('/signinact/signin')
-        if (sign.success) {
-            if (sign.result.success) {
-                console.log(`签到成功`)
-                let reward = await signGet(`/signinact/sendRewardResult/${sign.result.sendLogId}`)
-                for (const item of reward.result.list) {
-                    console.log(`获得：${item.pointAmt} ${item.winningPrizeName}`)
-                    if (item.winningPrizeName == "签到抽奖") {
-                        let luckydrawTimes = await signLuckyDrawGet('/luckydraw/luckydrawtimes')
-                        for (let i = 0; i < luckydrawTimes.result.drawLimitUserLeft; i++) {
-                            let luckydraw = await signLuckyDrawGet(`/luckydraw/luckydraw/8BD41756E6154A38A253B53EAF3F2338`)
-                            console.log(luckydraw.result.message)
-                            if (luckydraw.result.result) {
-                                let luckydrawResult = await signLuckyDrawGet('/luckydraw/luckydrawResult/8BD41756E6154A38A253B53EAF3F2338')
-                                if (luckydrawResult.result.result == "true") {
-                                    console.log(`获得：${luckydrawResult.result.awardName}`)
-                                } else {
-                                    console.log(luckydrawResult.result.result)
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                console.log(sign.result.message)
-            }
-        } else {
-            console.log('7点-23点才能签到')
-        }
-        console.log("————————————")
-        console.log("每日抽奖")
-        let luckydraw = await luckyDrawGet('/luckydraw/luckydraw/27AA8429B12847B2AAE25FF2A0620284')
-        if (luckydraw.success) {
-            console.log(luckydraw.result.message)
-            if (luckydraw.result.result) {
-                let luckydrawResult = await luckyDrawGet('/luckydraw/luckydrawResult/27AA8429B12847B2AAE25FF2A0620284')
-                if (luckydrawResult.result.result == "true") {
-                    console.log(`获得：${luckydrawResult.result.awardName}`)
-                } else {
-                    console.log(luckydrawResult.result.result)
-                }
-            }
-        } else {
-            console.log('7点-23点才能抽奖')
-        }
-        console.log("————————————")
-        console.log("每日任务")
-        for (const item of taskItemIdArr) {
-            let taskItemId = Object.keys(item)[0]
-            let taskItemAchieveDetail = await commonGet(`/task/taskItemAchieveDetail?taskItemId=${taskItemId}`)
-            console.log(`任务：${taskItemAchieveDetail.result.taskDesc}`)
-            if (taskItemAchieveDetail.result.finished) {
-                console.log("任务已完成")
-            } else {
-                let act = await commonGet(`/taskItem/achieve?taskItemId=${taskItemId}`)
-                console.log(act.message)
-            }
-        }
-        console.log("————————————")
-        console.log("查询积分")
-        let point = await commonGet('/common/accountPointLeft?pointId=620415610219683840')
-        console.log(`拥有积分：${point.result}\n`)
-        notice += `用户：${accountId} 拥有积分: ${point.result}\n`
+    accountId = Cheryfs[Cheryfs_Acc].accountId;
+    console.log(`用户：${accountId}开始兑换`)
+    let queryPointsMallCardList = await commonGet('/pointsmall/queryPointsMallCardList?isGroup=false')
+    for (const item of queryPointsMallCardList.result['全部']) {
+        console.log('兑换商品：' + item.cardName + 'id:' + item.id + ' 兑换所需积分：' + item.exchangePointsValue + ' 兑换所需金额：' + item.exchangeMoneyValue)
     }
-    if (notice) {
-        await sendMsg(notice);
-    }
-}
-
-async function getCookie() {
-    const accountId = $request.headers["accountid"] || $request.headers["accountId"];
-    if (!accountId) {
-        return
-    }
-    const newData = {"accountId": accountId};
-    const index = Cheryfs.findIndex(e => e.accountId == newData.accountId);
-    if (index !== -1) {
-        if (Cheryfs[index].accountId == newData.accountId) {
-            return
-        } else {
-            Cheryfs[index] = newData;
-            console.log(newData.accountId)
-            $.msg($.name, `🎉用户${newData.accountId}更新成功!`, ``);
+    let pointsMallCardId = Cheryfs_GIFTID;
+    let queryByPointsMallCardId = await commonGet(`/pointsmall/queryByPointsMallCardId?pointsMallCardId=${pointsMallCardId}`)
+    console.log(`开始兑换${queryByPointsMallCardId.result.cardName}`)
+    let exchangeCount = 1;
+    let exchangeType = queryByPointsMallCardId.result.exchangeType;
+    let exchangeNeedPoints = queryByPointsMallCardId.result.exchangePointsValue;
+    let exchangeNeedMoney = queryByPointsMallCardId.result.exchangeMoneyValue;
+    for (let i = 0; i < 20; i++) {
+        for (let j = 0; j < 2; j++) {
+            let exchange = commonGet(`/pointsmall/exchangeCard?pointsMallCardId=${pointsMallCardId}&exchangeCount=${exchangeCount}&mallOrderInputVoStr=%7B%22person%22:%22%22,%22phone%22:%22%22,%22province%22:%22%22,%22city%22:%22%22,%22area%22:%22%22,%22address%22:%22%22,%22remark%22:%22%22%7D&channel=1&exchangeType=${exchangeType}&exchangeNeedPoints=${exchangeNeedPoints}&exchangeNeedMoney=${exchangeNeedMoney}&cardGoodsItemIds=`)
         }
-    } else {
-        Cheryfs.push(newData)
-        console.log(newData.accountId)
-        $.msg($.name, `🎉新增用户${newData.accountId}成功!`, ``);
+        await $.wait(100)
     }
-    $.setjson(Cheryfs, "Cheryfs");
+    await $.wait(60000)
 }
 
 async function commonGet(url) {
@@ -126,10 +44,9 @@ async function commonGet(url) {
             headers : {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF',
                 'tenantId': '619669306447261696',
-                'activityId': '661720946758930433',
+                'activityId': '621950054462152705',
                 'accountId': accountId,
-            },
-            timeout:time_out
+            }
         }
         $.get(options, async (err, resp, data) => {
             try {
@@ -137,8 +54,9 @@ async function commonGet(url) {
                     console.log(`${JSON.stringify(err)}`)
                     console.log(`${$.name} API请求失败，请检查网路重试`)
                 } else {
-                    await $.wait(2000)
-                    resolve(JSON.parse(data));
+                    console.log(data)
+                    data = JSON.parse(data)
+                    resolve(data);
                 }
             } catch (e) {
                 $.logErr(e, resp)
@@ -147,110 +65,6 @@ async function commonGet(url) {
             }
         })
     })
-}
-
-async function signGet(url) {
-    return new Promise(resolve => {
-        const options = {
-            url: `https://channel.cheryfs.cn/archer/activity-api${url}`,
-            headers : {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF',
-                'tenantId': '619669306447261696',
-                'activityId': '620810406813786113',
-                'accountId': accountId,
-            },
-            timeout:time_out
-        }
-        $.get(options, async (err, resp, data) => {
-            try {
-                if (err) {
-                    console.log(`${JSON.stringify(err)}`)
-                    console.log(`${$.name} API请求失败，请检查网路重试`)
-                } else {
-                    await $.wait(2000)
-                    resolve((JSON.parse(data)));
-                }
-            } catch (e) {
-                $.logErr(e, resp)
-            } finally {
-                resolve();
-            }
-        })
-    })
-}
-
-async function luckyDrawGet(url) {
-    return new Promise(resolve => {
-        const options = {
-            url: `https://channel.cheryfs.cn/archer/activity-api${url}`,
-            headers : {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF',
-                'tenantId': '619669306447261696',
-                'activityId': '620821692188483585',
-                'accountId': accountId,
-            },
-            timeout:time_out
-        }
-        $.get(options, async (err, resp, data) => {
-            try {
-                if (err) {
-                    console.log(`${JSON.stringify(err)}`)
-                    console.log(`${$.name} API请求失败，请检查网路重试`)
-                } else {
-                    await $.wait(2000)
-                    resolve((JSON.parse(data)));
-                }
-            } catch (e) {
-                $.logErr(e, resp)
-            } finally {
-                resolve();
-            }
-        })
-    })
-}
-
-async function signLuckyDrawGet(url) {
-    return new Promise(resolve => {
-        const options = {
-            url: `https://channel.cheryfs.cn/archer/activity-api${url}`,
-            headers : {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF',
-                'tenantId': '619669306447261696',
-                'activityId': '772254567680942081',
-                'accountId': accountId,
-            },
-            timeout:time_out
-        }
-        $.get(options, async (err, resp, data) => {
-            try {
-                if (err) {
-                    console.log(`${JSON.stringify(err)}`)
-                    console.log(`${$.name} API请求失败，请检查网路重试`)
-                } else {
-                    await $.wait(2000)
-                    resolve((JSON.parse(data)));
-                }
-            } catch (e) {
-                $.logErr(e, resp)
-            } finally {
-                resolve();
-            }
-        })
-    })
-}
-
-async function sendMsg(message) {
-    if ($.isNode()) {
-        let notify = ''
-        try {
-            notify = require('./sendNotify');
-        } catch (e) {
-            notify = require("../sendNotify");
-        }
-        await notify.sendNotify($.name, message);
-    } else {
-        $.msg($.name, '', message)
-    }
 }
 
 // prettier-ignore
