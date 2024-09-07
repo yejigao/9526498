@@ -20,10 +20,10 @@ async function main() {
     console.log('作者：@xzxxn777\n频道：https://t.me/xzxxn777\n群组：https://t.me/xzxxn7777\n自用机场推荐：https://xn--diqv0fut7b.com\n')
     accountId = Cheryfs[Cheryfs_Acc].accountId;
     console.log(`用户：${accountId}开始兑换`)
-    let queryPointsMallCardList = await commonGet('/pointsmall/queryPointsMallCardList?isGroup=false')
-    for (const item of queryPointsMallCardList.result['全部']) {
-        console.log('兑换商品：' + item.cardName + 'id:' + item.id + ' 兑换所需积分：' + item.exchangePointsValue + ' 兑换所需金额：' + item.exchangeMoneyValue)
-    }
+    // let queryPointsMallCardList = await commonGet('/pointsmall/queryPointsMallCardList?isGroup=false')
+    // for (const item of queryPointsMallCardList.result['全部']) {
+    //     console.log('兑换商品：' + item.cardName + 'id:' + item.id + ' 兑换所需积分：' + item.exchangePointsValue + ' 兑换所需金额：' + item.exchangeMoneyValue)
+    // }
     let pointsMallCardId = Cheryfs_GIFTID;
     let queryByPointsMallCardId = await commonGet(`/pointsmall/queryByPointsMallCardId?pointsMallCardId=${pointsMallCardId}`)
     console.log(`开始兑换${queryByPointsMallCardId.result.cardName}`)
@@ -32,9 +32,9 @@ async function main() {
     let exchangeNeedPoints = queryByPointsMallCardId.result.exchangePointsValue;
     let exchangeNeedMoney = queryByPointsMallCardId.result.exchangeMoneyValue;
     for (let i = 0; i < Cheryfs_MUM; i++) {
-        for (let j = 0; j < 2; j++) {
-            let exchange = commonGet(`/pointsmall/exchangeCard?pointsMallCardId=${pointsMallCardId}&exchangeCount=${exchangeCount}&mallOrderInputVoStr=%7B%22person%22:%22%22,%22phone%22:%22%22,%22province%22:%22%22,%22city%22:%22%22,%22area%22:%22%22,%22address%22:%22%22,%22remark%22:%22%22%7D&channel=1&exchangeType=${exchangeType}&exchangeNeedPoints=${exchangeNeedPoints}&exchangeNeedMoney=${exchangeNeedMoney}&cardGoodsItemIds=`)
-        }
+        // for (let j = 0; j < 2; j++) {
+        let exchange = commonGet(`/pointsmall/exchangeCard?pointsMallCardId=${pointsMallCardId}&exchangeCount=${exchangeCount}&mallOrderInputVoStr=%7B%22person%22:%22%22,%22phone%22:%22%22,%22province%22:%22%22,%22city%22:%22%22,%22area%22:%22%22,%22address%22:%22%22,%22remark%22:%22%22%7D&channel=1&exchangeType=${exchangeType}&exchangeNeedPoints=${exchangeNeedPoints}&exchangeNeedMoney=${exchangeNeedMoney}&cardGoodsItemIds=`)
+        // }
         await $.wait(100)
     }
     await $.wait(60000)
