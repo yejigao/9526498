@@ -1,5 +1,6 @@
 /**
  * cron "11 7,17 * * *" HaiXing.js
+注册地址微信打开https://app-web.yooucai.store/youcai_wechat/index.html#/download-guide/live?userNo=4539862753
  * export HaiXing="账号1&token1 账号2&token2"
  */
 const $ = new Env('海星');
