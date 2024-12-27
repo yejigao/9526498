@@ -1,6 +1,5 @@
 /**
  * cron "30 30,35,40 9 * * *" DaChao.js
- * export DaChao="账号1&密码1 账号2&密码2"
  * export OCR_SERVER="ocr服务"
  */
 const $ = new Env('大潮')
